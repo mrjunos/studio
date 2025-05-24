@@ -172,13 +172,25 @@ export default function ProductsPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="p-4 border-t flex justify-end gap-2 mt-auto">
-                  <Button variant="outline" size="sm" onClick={() => handleEditProduct(product)} className="text-xs flex-1 sm:flex-none" disabled={isPending}>
-                    <Edit className="mr-1 h-3.5 w-3.5" /> Edit
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleEditProduct(product)} 
+                    className="flex-1 text-xs" 
+                    disabled={isPending}
+                  >
+                    <Edit className="mr-1 h-4 w-4" /> Edit
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm" className="text-xs flex-1 sm:flex-none" disabled={isPending}>
-                        <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="w-9 h-9 p-0 flex items-center justify-center" 
+                        disabled={isPending}
+                        aria-label="Delete product"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -229,4 +241,3 @@ export default function ProductsPage() {
     </div>
   );
 }
-
