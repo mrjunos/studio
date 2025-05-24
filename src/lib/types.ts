@@ -1,6 +1,8 @@
 
 export type ProductCategory = "Drinks" | "Food" | "Merchandise" | "Uncategorized";
 
+export const productCategories: ProductCategory[] = ["Drinks", "Food", "Merchandise", "Uncategorized"];
+
 export interface Product {
   id: string;
   name: string;

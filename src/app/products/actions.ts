@@ -4,6 +4,7 @@
 import { suggestProductCategory, SuggestProductCategoryInput, SuggestProductCategoryOutput } from "@/ai/flows/suggest-product-category";
 import { z } from "zod";
 import type { Product, ProductCategory } from "@/lib/types";
+import { productCategories } from "@/lib/types"; // Imported from types.ts
 
 // Dummy data store for products (replace with actual database logic)
 let products: Product[] = [
@@ -11,8 +12,6 @@ let products: Product[] = [
   { id: "2", name: "Croissant", category: "Food", price: 3.00, stock: 50, imageUrl: "https://placehold.co/400x300.png?text=Croissant" },
   { id: "3", name: "Coffee Mug", category: "Merchandise", price: 12.00, stock: 20, imageUrl: "https://placehold.co/400x300.png?text=Mug" },
 ];
-
-export const productCategories: ProductCategory[] = ["Drinks", "Food", "Merchandise", "Uncategorized"];
 
 const ProductSchema = z.object({
   id: z.string().optional(), // Optional for new products

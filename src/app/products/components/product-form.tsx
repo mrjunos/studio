@@ -25,7 +25,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Lightbulb, Loader2, Save } from "lucide-react";
 import type { Product, ProductCategory } from "@/lib/types";
-import { productCategories, ProductFormInput, handleSuggestCategory } from "../actions";
+import { productCategories } from "@/lib/types"; // Imported from types.ts
+import { ProductFormInput, handleSuggestCategory } from "../actions";
 import { useState, useTransition } from "react";
 import Image from "next/image";
 
