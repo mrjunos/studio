@@ -4,8 +4,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/app-shell";
 import { Toaster } from "@/components/ui/toaster";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import React from "react";
+import { Providers } from "./providers"; // Import the new Providers component
 
 
 const geistSans = Geist({
@@ -33,12 +33,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <TooltipProvider>
-          <SidebarProvider defaultOpen>
-            <AppShell>{children}</AppShell>
-            <Toaster />
-          </SidebarProvider>
-        </TooltipProvider>
+        <Providers> {/* Use the Providers component to wrap AppShell and Toaster */}
+          <AppShell>{children}</AppShell>
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );

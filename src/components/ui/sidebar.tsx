@@ -15,8 +15,7 @@ import { Sheet, SheetContent as SheetPrimitiveContent } from "@/components/ui/sh
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
-  TooltipContent as TooltipPrimitiveContent, // Renamed to avoid conflict
-  // TooltipProvider, // No longer used directly here
+  TooltipContent as TooltipPrimitiveContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
@@ -122,7 +121,6 @@ const SidebarProvider = React.forwardRef<
     )
 
     return (
-      <SidebarContext.Provider value={contextValue}>
         <div
           style={
             {
@@ -132,7 +130,7 @@ const SidebarProvider = React.forwardRef<
             } as React.CSSProperties
           }
           className={cn(
-            "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar",
+            "group/sidebar-wrapper flex min-h-svh w-full", // Removed bg-sidebar from here
             className
           )}
           ref={ref}
@@ -140,7 +138,6 @@ const SidebarProvider = React.forwardRef<
         >
           {children}
         </div>
-      </SidebarContext.Provider>
     )
   }
 )
@@ -205,7 +202,7 @@ const Sidebar = React.forwardRef<
     return (
       <div
         ref={ref}
-        className="group peer hidden md:block text-sidebar-foreground"
+        className="group peer hidden md:flex flex-col text-sidebar-foreground" // Changed to md:flex and added flex-col
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
@@ -214,24 +211,33 @@ const Sidebar = React.forwardRef<
         {/* This is what handles the sidebar gap on desktop */}
         <div
           className={cn(
-            "duration-200 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-linear",
-            "group-data-[collapsible=offcanvas]:w-0",
-            "group-data-[side=right]:rotate-180",
+            "duration-200 relative h-svh bg-transparent transition-[width] ease-linear",
+            // Mobile first: default to w-0
+            "w-0",
+            // Desktop states for width:
+            "md:group-data-[collapsible=offcanvas]:w-0",
+            "md:w-[--sidebar-width]", // Default desktop width when expanded
             variant === "floating" || variant === "inset"
-              ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
+              ? "md:group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
+              : "md:group-data-[collapsible=icon]:w-[--sidebar-width-icon]",
+            "group-data-[side=right]:rotate-180" // This seems odd for a spacer, might be for RTL fixed content
           )}
         />
+        {/* This is the actual fixed sidebar content */}
         <div
           className={cn(
-            "duration-200 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex",
+            "duration-200 fixed inset-y-0 z-10 h-svh transition-[left,right,width] ease-linear",
+            "hidden md:flex", // Ensure it's flex for children
+            // Mobile first: default to w-0 or offscreen
+            "w-0",
             side === "left"
-              ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
-              : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-            // Adjust the padding for floating and inset variants.
+              ? "left-0 md:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
+              : "right-0 md:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
+            // Desktop widths
+            "md:w-[--sidebar-width]",
             variant === "floating" || variant === "inset"
-              ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
+              ? "p-2 md:group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
+              : "md:group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
             className
           )}
           {...props}
@@ -312,8 +318,14 @@ const SidebarInset = React.forwardRef<
     <main
       ref={ref}
       className={cn(
-        "relative flex min-h-svh flex-1 flex-col bg-background",
-        "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
+        "relative flex min-h-svh flex-1 flex-col bg-background w-full", // Added w-full here
+        // Desktop inset variant adjustments:
+        "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))]",
+        "md:peer-data-[variant=inset]:m-2",
+        "md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2", 
+        "md:peer-data-[variant=inset]:ml-0", 
+        "md:peer-data-[variant=inset]:rounded-xl",
+        "md:peer-data-[variant=inset]:shadow",
         className
       )}
       {...props}
@@ -752,3 +764,4 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
