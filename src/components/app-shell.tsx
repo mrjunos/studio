@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import React from "react"; // Import React for useState and useEffect
 import {
-  SidebarProvider,
   Sidebar,
   SidebarHeader as UiSidebarHeader, // Renamed to avoid conflict
   SidebarContent,
@@ -64,7 +63,7 @@ const navItems: NavItem[] = [
   { href: "/income", icon: Landmark, label: "Other Income", tooltip: "Track Other Income" },
 ];
 
-// New component specifically for the app's sidebar header logic
+// This component remains the same as it's already designed to consume context correctly
 function AppSpecificSidebarHeader() {
   const { isMobile } = useSidebar();
   const [mounted, setMounted] = React.useState(false);
@@ -80,14 +79,9 @@ function AppSpecificSidebarHeader() {
   );
 
   return (
-    <UiSidebarHeader className="p-4" suppressHydrationWarning> {/* Use the original SidebarHeader from ui */}
+    <UiSidebarHeader className="p-4" suppressHydrationWarning>
       <Link href="/" className="flex items-center gap-2">
         <Coffee className="h-8 w-8 text-primary" />
-        {/*
-          On the server: mounted=false (effectively), isMobile=false. Renders: titleElement.
-          On initial client render (before useEffect): mounted=false, isMobile=false. Renders: titleElement. This matches server.
-          After client mount: mounted=true. If isMobile becomes true, it re-renders with SheetTitle.
-        */}
         {mounted && isMobile ? (
           <SheetTitle asChild>{titleElement}</SheetTitle>
         ) : (
@@ -98,87 +92,96 @@ function AppSpecificSidebarHeader() {
   );
 }
 
-
-export function AppShell({ children }: { children: ReactNode }) {
+// Inner component that contains the main layout and consumes sidebar context
+function AppShellInternal({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   return (
-    <SidebarProvider defaultOpen>
-      <div className="flex min-h-screen bg-background">
-        <Sidebar variant="sidebar" collapsible="icon" className="border-r">
-          <AppSpecificSidebarHeader /> {/* Use the new component */}
-          <Separator />
-          <SidebarContent asChild>
-            <ScrollArea className="h-full">
-              <SidebarMenu className="p-4">
-                {navItems.map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={pathname === item.href}
-                      tooltip={{
-                        children: item.tooltip,
-                        className: "group-data-[collapsible=icon]:block hidden",
-                      }}
-                      className={cn(
-                        "justify-start",
-                        pathname === item.href && "bg-primary/10 text-primary hover:bg-primary/20"
-                      )}
-                    >
-                      <Link href={item.href}>
-                        <item.icon className="h-5 w-5" />
-                        <span className="group-data-[collapsible=icon]:hidden">
-                          {item.label}
-                        </span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </ScrollArea>
-          </SidebarContent>
-          <Separator />
-          <SidebarFooter className="p-4">
-             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 w-full justify-start p-2 group-data-[collapsible=icon]:justify-center">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="https://placehold.co/100x100.png" alt="User Avatar" data-ai-hint="user avatar" />
-                    <AvatarFallback>BB</AvatarFallback>
-                  </Avatar>
-                  <div className="group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium">BrewBooks User</p>
-                    <p className="text-xs text-muted-foreground">admin@brewbooks.com</p>
-                  </div>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="right" align="start" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarFooter>
-        </Sidebar>
-        <SidebarInset className="flex-1 overflow-y-auto">
-          <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 px-6 backdrop-blur-md md:justify-end">
-             <SidebarTrigger className="md:hidden">
-                <Menu className="h-6 w-6" />
-             </SidebarTrigger>
-             {/* Add any header content here, e.g. search bar, user menu for mobile */}
-          </header>
-          <main className="p-6">
-            {children}
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+    <div className="flex min-h-screen bg-background">
+      <Sidebar variant="sidebar" collapsible="icon" className="border-r">
+        <AppSpecificSidebarHeader />
+        <Separator />
+        <SidebarContent asChild>
+          <ScrollArea className="h-full">
+            <SidebarMenu className="p-4">
+              {navItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.href}
+                    tooltip={{
+                      children: item.tooltip,
+                      className: "group-data-[collapsible=icon]:block hidden",
+                    }}
+                    className={cn(
+                      "justify-start",
+                      pathname === item.href && "bg-primary/10 text-primary hover:bg-primary/20"
+                    )}
+                    onClick={() => {
+                      if (isMobile) {
+                        setOpenMobile(false);
+                      }
+                    }}
+                  >
+                    <Link href={item.href}>
+                      <item.icon className="h-5 w-5" />
+                      <span className="group-data-[collapsible=icon]:hidden">
+                        {item.label}
+                      </span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </ScrollArea>
+        </SidebarContent>
+        <Separator />
+        <SidebarFooter className="p-4">
+           <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-2 w-full justify-start p-2 group-data-[collapsible=icon]:justify-center">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src="https://placehold.co/100x100.png" alt="User Avatar" data-ai-hint="user avatar" />
+                  <AvatarFallback>BB</AvatarFallback>
+                </Avatar>
+                <div className="group-data-[collapsible=icon]:hidden">
+                  <p className="text-sm font-medium">BrewBooks User</p>
+                  <p className="text-xs text-muted-foreground">admin@brewbooks.com</p>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="start" className="w-56">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarFooter>
+      </Sidebar>
+      <SidebarInset className="flex-1 overflow-y-auto">
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 px-6 backdrop-blur-md md:justify-end">
+           <SidebarTrigger className="md:hidden"> {/* SidebarTrigger also uses useSidebar */}
+              <Menu className="h-6 w-6" />
+           </SidebarTrigger>
+        </header>
+        <main className="p-6">
+          {children}
+        </main>
+      </SidebarInset>
+    </div>
   );
+}
+
+// AppShell is now a wrapper that renders AppShellInternal.
+// It does not call useSidebar() directly.
+export function AppShell({ children }: { children: ReactNode }) {
+  return <AppShellInternal>{children}</AppShellInternal>;
 }
