@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { PageTitle } from "@/components/shared/page-title";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,38 +9,39 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Trash2, ShoppingCart, XCircle, Loader2 } from "lucide-react";
-import type { Product, SaleItem } from "@/lib/types";
-import { getProducts } from "@/app/products/actions"; // Assuming getProducts is available
+import { PlusCircle, XCircle, ShoppingCart, Loader2 } from "lucide-react";
+import type { Product } from "@/lib/types";
+import { getProducts } from "@/app/products/actions";
 import { useToast } from "@/hooks/use-toast";
+import { processSale, type CartItemForAction } from "./actions";
 
-interface CartItem extends SaleItem {
-  productName: string;
-  productPrice: number;
+interface CartItemClient extends CartItemForAction {
+  // productName and productPrice are already in CartItemForAction via SaleItem
 }
 
 export default function SalesPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [quantity, setQuantity] = useState<number>(1);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItemClient[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-  const [isProcessingSale, setIsProcessingSale] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  useEffect(() => {
-    async function fetchProductsData() {
-      setIsLoadingProducts(true);
-      try {
-        const fetchedProducts = await getProducts();
-        setProducts(fetchedProducts.filter(p => p.stock > 0)); // Only sellable products
-      } catch (error) {
-        toast({ title: "Error", description: "Could not load products for sale.", variant: "destructive" });
-      }
-      setIsLoadingProducts(false);
+  const fetchProductsData = async () => {
+    setIsLoadingProducts(true);
+    try {
+      const fetchedProducts = await getProducts();
+      setProducts(fetchedProducts); // Show all products, stock check happens on add/process
+    } catch (error: any) {
+      toast({ title: "Error Loading Products", description: error.message || "Could not load products.", variant: "destructive" });
     }
+    setIsLoadingProducts(false);
+  };
+
+  useEffect(() => {
     fetchProductsData();
-  }, [toast]);
+  }, []);
 
   const handleAddToCart = () => {
     if (!selectedProductId || quantity <= 0) {
@@ -54,6 +55,10 @@ export default function SalesPage() {
       return;
     }
     
+    if (product.stock <= 0) {
+        toast({ title: "Out of Stock", description: `${product.name} is currently out of stock.`, variant: "destructive"});
+        return;
+    }
     if (quantity > product.stock) {
       toast({ title: "Insufficient Stock", description: `Only ${product.stock} units of ${product.name} available.`, variant: "destructive"});
       return;
@@ -72,10 +77,9 @@ export default function SalesPage() {
     } else {
       setCart([...cart, { 
         productId: product.id, 
+        productName: product.name,
         quantity, 
         priceAtSale: product.price, 
-        productName: product.name,
-        productPrice: product.price 
       }]);
     }
     
@@ -89,16 +93,18 @@ export default function SalesPage() {
     toast({ title: "Item Removed", description: `Item removed from cart.` });
   };
   
-  const handleUpdateQuantity = (productId: string, newQuantity: number) => {
-    const product = products.find(p => p.id === productId);
+  const handleUpdateQuantity = (productId: string, newQuantityStr: string) => {
+    const newQuantity = parseInt(newQuantityStr);
+    const product = products.find(p => p.id === productId); // Find original product for stock info
     if (!product) return;
 
-    if (newQuantity <= 0) {
+    if (isNaN(newQuantity) || newQuantity <= 0) {
+      // If input is cleared or invalid, remove item or set to 1. For simplicity, remove.
       handleRemoveFromCart(productId);
       return;
     }
     if (newQuantity > product.stock) {
-      toast({ title: "Insufficient Stock", description: `Only ${product.stock} units available.`, variant: "destructive"});
+      toast({ title: "Insufficient Stock", description: `Only ${product.stock} units of ${product.name} available.`, variant: "destructive"});
       setCart(cart.map(item => item.productId === productId ? { ...item, quantity: product.stock } : item));
       return;
     }
@@ -106,7 +112,7 @@ export default function SalesPage() {
   }
 
   const calculateTotal = () => {
-    return cart.reduce((total, item) => total + item.productPrice * item.quantity, 0);
+    return cart.reduce((total, item) => total + item.priceAtSale * item.quantity, 0);
   };
 
   const handleProcessSale = async () => {
@@ -114,20 +120,32 @@ export default function SalesPage() {
       toast({ title: "Empty Cart", description: "Please add items to the cart before processing sale.", variant: "destructive" });
       return;
     }
-    setIsProcessingSale(true);
-    // Simulate API call for sale processing & inventory update
-    await new Promise(resolve => setTimeout(resolve, 1500)); 
     
-    // This is where you would call a server action to:
-    // 1. Create a Sale record in your database
-    // 2. Update stock for each product sold
-    
-    toast({ title: "Sale Processed!", description: `Total: $${calculateTotal().toFixed(2)}. Inventory updated.` });
-    setCart([]); // Clear cart
-    // Potentially re-fetch products to update stock display if not handled reactively
-    const fetchedProducts = await getProducts();
-    setProducts(fetchedProducts.filter(p => p.stock > 0));
-    setIsProcessingSale(false);
+    const itemsForAction: CartItemForAction[] = cart.map(item => ({
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        priceAtSale: item.priceAtSale,
+    }));
+    const total = calculateTotal();
+
+    startTransition(async () => {
+        const result = await processSale(itemsForAction, total);
+        if (result.success) {
+            toast({ title: "Sale Processed!", description: `Sale ID: ${result.saleId}. Total: $${total.toFixed(2)}. Inventory updated.` });
+            setCart([]); 
+            fetchProductsData(); // Re-fetch products to update stock display
+        } else {
+            let errorDesc = result.error || "Failed to process sale.";
+            if (result.unavailableItems && result.unavailableItems.length > 0) {
+                errorDesc += " Unavailable: " + result.unavailableItems.map(i => `${i.name} (only ${i.availableStock} left)`).join(', ');
+            }
+            toast({ title: "Sale Failed", description: errorDesc, variant: "destructive" });
+            // Potentially update cart quantities if only some items were problematic
+            // or re-fetch products to show current stock on items that failed
+            fetchProductsData(); 
+        }
+    });
   };
 
   return (
@@ -144,7 +162,7 @@ export default function SalesPage() {
               <div>
                 <Label htmlFor="product">Product</Label>
                 {isLoadingProducts ? <Loader2 className="h-5 w-5 animate-spin mt-2" /> : (
-                  <Select value={selectedProductId} onValueChange={setSelectedProductId}>
+                  <Select value={selectedProductId} onValueChange={setSelectedProductId} disabled={isPending}>
                     <SelectTrigger id="product">
                       <SelectValue placeholder="Select a product" />
                     </SelectTrigger>
@@ -166,10 +184,11 @@ export default function SalesPage() {
                   value={quantity} 
                   onChange={(e) => setQuantity(parseInt(e.target.value) || 1)} 
                   min="1" 
+                  disabled={isPending || isLoadingProducts}
                 />
               </div>
             </div>
-            <Button onClick={handleAddToCart} disabled={isLoadingProducts || !selectedProductId || quantity <= 0} className="w-full sm:w-auto">
+            <Button onClick={handleAddToCart} disabled={isPending || isLoadingProducts || !selectedProductId || quantity <= 0} className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Add to Cart
             </Button>
           </CardContent>
@@ -203,14 +222,15 @@ export default function SalesPage() {
                         <Input 
                           type="number" 
                           value={item.quantity} 
-                          onChange={(e) => handleUpdateQuantity(item.productId, parseInt(e.target.value))}
+                          onChange={(e) => handleUpdateQuantity(item.productId, e.target.value)}
                           min="1"
                           className="h-8 text-center"
+                          disabled={isPending}
                         />
                       </TableCell>
-                      <TableCell className="text-right">${(item.productPrice * item.quantity).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">${(item.priceAtSale * item.quantity).toFixed(2)}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleRemoveFromCart(item.productId)} className="text-destructive hover:text-destructive/80">
+                        <Button variant="ghost" size="icon" onClick={() => handleRemoveFromCart(item.productId)} className="text-destructive hover:text-destructive/80" disabled={isPending}>
                           <XCircle className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -226,8 +246,8 @@ export default function SalesPage() {
                 <span>Total:</span>
                 <span className="text-primary">${calculateTotal().toFixed(2)}</span>
               </div>
-              <Button onClick={handleProcessSale} className="w-full mt-2" disabled={isProcessingSale}>
-                {isProcessingSale ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
+              <Button onClick={handleProcessSale} className="w-full mt-2" disabled={isPending || isLoadingProducts}>
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
                 Process Sale
               </Button>
             </CardFooter>

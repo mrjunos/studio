@@ -14,6 +14,7 @@ export interface Product {
 
 export interface SaleItem {
   productId: string;
+  productName: string; // Denormalized for easier display in sale records
   quantity: number;
   priceAtSale: number;
 }
@@ -22,23 +23,23 @@ export interface Sale {
   id: string;
   items: SaleItem[];
   totalAmount: number;
-  saleDate: Date;
+  saleDate: string; // Store as ISO string or Firestore Timestamp, handle conversion
 }
 
 export interface InventoryAdjustment {
   id:string;
   productId: string;
-  productName?: string; // For display convenience
+  productName: string; // Denormalized for display convenience
   quantityChange: number;
   reason?: string;
-  adjustmentDate: Date;
+  adjustmentDate: string; // Store as ISO string or Firestore Timestamp
 }
 
 export interface OtherIncome {
   id: string;
   description: string;
   amount: number;
-  incomeDate: Date;
+  incomeDate: string; // Store as ISO string or Firestore Timestamp
 }
 
 export interface MetricCardProps {

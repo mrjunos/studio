@@ -27,13 +27,22 @@ import {
 import { PlusCircle, Edit, Trash2, Loader2, Calendar as CalendarIcon } from "lucide-react";
 import type { OtherIncome } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-
-// Mock data for income - replace with server actions and DB
-let mockIncomes: OtherIncome[] = [];
+import { getOtherIncomes, addOtherIncome, updateOtherIncome, deleteOtherIncome, type OtherIncomeFormInput } from "./actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -43,23 +52,37 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
 });
 
 export default function IncomePage() {
-  const [incomes, setIncomes] = useState<OtherIncome[]>(mockIncomes);
-  const [isLoading, setIsLoading] = useState(false); // For potential future API calls
+  const [incomes, setIncomes] = useState<OtherIncome[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingIncome, setEditingIncome] = useState<OtherIncome | null>(null);
   
   // Form state
   const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState<number | string>("");
+  const [amount, setAmount] = useState<number | string>(""); // Allow string for input flexibility
   const [incomeDate, setIncomeDate] = useState<Date | undefined>(new Date());
 
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
+  const fetchIncomes = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getOtherIncomes();
+      setIncomes(data);
+    } catch (error: any) {
+      toast({
+        title: "Error Fetching Income",
+        description: error.message || "Could not load income data.",
+        variant: "destructive"
+      });
+    }
+    setIsLoading(false);
+  };
+
   useEffect(() => {
-    // In a real app, fetch income data
-    setIncomes(mockIncomes.sort((a,b) => new Date(b.incomeDate).getTime() - new Date(a.incomeDate).getTime()));
+    fetchIncomes();
   }, []);
 
   const handleOpenDialog = (income: OtherIncome | null = null) => {
@@ -67,7 +90,7 @@ export default function IncomePage() {
     if (income) {
       setDescription(income.description);
       setAmount(income.amount);
-      setIncomeDate(new Date(income.incomeDate));
+      setIncomeDate(new Date(income.incomeDate)); // Parse ISO string to Date
     } else {
       setDescription("");
       setAmount("");
@@ -87,42 +110,35 @@ export default function IncomePage() {
        return;
     }
 
-    startTransition(async () => {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    const incomeData: OtherIncomeFormInput = { description, amount: numericAmount, incomeDate };
 
+    startTransition(async () => {
+      let result;
       if (editingIncome) {
-        // Update existing income
-        const updatedIncomes = incomes.map(inc => 
-          inc.id === editingIncome.id 
-            ? { ...inc, description, amount: numericAmount, incomeDate } 
-            : inc
-        );
-        mockIncomes = updatedIncomes;
-        setIncomes(updatedIncomes.sort((a,b) => new Date(b.incomeDate).getTime() - new Date(a.incomeDate).getTime()));
-        toast({ title: "Income Updated", description: "The income entry has been successfully updated." });
+        result = await updateOtherIncome(editingIncome.id, incomeData);
       } else {
-        // Add new income
-        const newIncome: OtherIncome = {
-          id: String(Date.now()),
-          description,
-          amount: numericAmount,
-          incomeDate,
-        };
-        mockIncomes = [newIncome, ...incomes];
-        setIncomes(mockIncomes.sort((a,b) => new Date(b.incomeDate).getTime() - new Date(a.incomeDate).getTime()));
-        toast({ title: "Income Added", description: "New income entry has been successfully recorded." });
+        result = await addOtherIncome(incomeData);
       }
-      setIsDialogOpen(false);
+
+      if (result.success) {
+        toast({ title: editingIncome ? "Income Updated" : "Income Added", description: `Entry for ${incomeData.description} processed.` });
+        fetchIncomes(); // Refresh list
+        setIsDialogOpen(false);
+      } else {
+        toast({ title: "Error", description: result.error || "An unexpected error occurred.", variant: "destructive" });
+      }
     });
   };
   
-  const handleDeleteIncome = async (incomeId: string) => {
+  const handleDeleteConfirmation = async (incomeId: string) => {
      startTransition(async () => {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
-        mockIncomes = incomes.filter(inc => inc.id !== incomeId);
-        setIncomes(mockIncomes);
-        toast({ title: "Income Deleted", description: "The income entry has been deleted." });
+        const result = await deleteOtherIncome(incomeId);
+        if (result.success) {
+          toast({ title: "Income Deleted", description: "The income entry has been deleted." });
+          fetchIncomes(); // Refresh list
+        } else {
+          toast({ title: "Error Deleting", description: result.error || "Failed to delete income entry.", variant: "destructive" });
+        }
      });
   }
 
@@ -163,12 +179,34 @@ export default function IncomePage() {
                       {currencyFormatter.format(income.amount)}
                     </TableCell>
                     <TableCell className="text-right">
-                       <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(income)} className="mr-2 hover:text-accent">
+                       <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(income)} className="mr-2 hover:text-accent" disabled={isPending}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteIncome(income.id)} className="hover:text-destructive" disabled={isPending}>
-                        {isPending && editingIncome?.id !== income.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="hover:text-destructive" disabled={isPending}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the income entry for "{income.description}".
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteConfirmation(income.id)}
+                              disabled={isPending}
+                              className="bg-destructive hover:bg-destructive/90"
+                            >
+                              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Delete"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </TableCell>
                   </TableRow>
                 ))
@@ -200,6 +238,7 @@ export default function IncomePage() {
                 placeholder="e.g., Event catering, Consulting fee"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                disabled={isPending}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -208,10 +247,11 @@ export default function IncomePage() {
                 <Input 
                   id="income-amount" 
                   type="number"
-                  step="0.01" // Keep step for input flexibility, display will format
+                  step="0.01"
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
+                  disabled={isPending}
                 />
               </div>
               <div className="space-y-2">
@@ -225,6 +265,7 @@ export default function IncomePage() {
                         "w-full justify-start text-left font-normal",
                         !incomeDate && "text-muted-foreground"
                       )}
+                      disabled={isPending}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {incomeDate ? format(incomeDate, "PPP") : <span>Pick a date</span>}
@@ -236,6 +277,7 @@ export default function IncomePage() {
                       selected={incomeDate}
                       onSelect={setIncomeDate}
                       initialFocus
+                      disabled={isPending}
                     />
                   </PopoverContent>
                 </Popover>
