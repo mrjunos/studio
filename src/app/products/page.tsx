@@ -129,8 +129,7 @@ export default function ProductsPage() {
         </div>
       ) : (
         <div 
-          className="grid gap-6 w-full"
-          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))' }}
+          className="grid w-full gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3"
         >
           {filteredProducts.length > 0 ? (
             filteredProducts.map((product) => (
