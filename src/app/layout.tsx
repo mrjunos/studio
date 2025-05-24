@@ -5,7 +5,9 @@ import "./globals.css";
 import { AppShell } from "@/components/app-shell";
 import { Toaster } from "@/components/ui/toaster";
 import React from "react";
-import { Providers } from "./providers"; // Import the new Providers component
+// Direct imports for providers
+import { SidebarProvider } from "@/components/ui/sidebar"; // Changed back to direct import
+import { TooltipProvider } from "@/components/ui/tooltip"; // Changed back to direct import
 
 
 const geistSans = Geist({
@@ -33,10 +35,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Providers> {/* Use the Providers component to wrap AppShell and Toaster */}
-          <AppShell>{children}</AppShell>
-          <Toaster />
-        </Providers>
+        <SidebarProvider defaultOpen> {/* SidebarProvider now directly from ui/sidebar */}
+          <TooltipProvider> {/* TooltipProvider directly from ui/tooltip */}
+            <AppShell>{children}</AppShell>
+            <Toaster />
+          </TooltipProvider>
+        </SidebarProvider>
       </body>
     </html>
   );

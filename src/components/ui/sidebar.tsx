@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent as SheetPrimitiveContent } from "@/components/ui/sheet" // Renamed to avoid conflict
+import { Sheet, SheetContent as SheetPrimitiveContent } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -26,7 +26,7 @@ const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
-type SidebarContext = {
+type SidebarContextValue = {
   state: "expanded" | "collapsed"
   open: boolean
   setOpen: (open: boolean) => void
@@ -36,7 +36,7 @@ type SidebarContext = {
   toggleSidebar: () => void
 }
 
-const SidebarContext = React.createContext<SidebarContext | null>(null)
+const SidebarContext = React.createContext<SidebarContextValue | null>(null)
 
 function useSidebar() {
   const context = React.useContext(SidebarContext)
@@ -47,51 +47,69 @@ function useSidebar() {
   return context
 }
 
-const SidebarProvider = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentProps<"div"> & {
-    defaultOpen?: boolean
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }
->(
-  (
-    {
-      defaultOpen = true,
-      open: openProp,
-      onOpenChange: setOpenProp,
-      className,
-      style,
-      children,
-      ...props
-    },
-    ref
-  ) => {
-    const isMobileHookVal = useIsMobile()
-    const [openMobile, setOpenMobile] = React.useState(false)
+// Changed from React.forwardRef to a standard functional component
+interface SidebarProviderProps extends React.HTMLAttributes<HTMLDivElement> {
+  defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  children: React.ReactNode;
+}
 
-    const [_open, _setOpen] = React.useState(defaultOpen)
-    const open = openProp ?? _open
-    const setOpen = React.useCallback(
-      (value: boolean | ((value: boolean) => boolean)) => {
-        const openState = typeof value === "function" ? value(open) : value
-        if (setOpenProp) {
-          setOpenProp(openState)
-        } else {
-          _setOpen(openState)
-        }
+const SidebarProvider: React.FC<SidebarProviderProps> = ({
+  defaultOpen = true,
+  open: openProp,
+  onOpenChange: setOpenProp,
+  className,
+  style,
+  children,
+  ...props
+}) => {
+  const isMobileHookVal = useIsMobile()
+  const [openMobile, setOpenMobile] = React.useState(false)
+
+  const [_open, _setOpen] = React.useState(defaultOpen)
+  const open = openProp ?? _open
+
+  const setOpen = React.useCallback(
+    (value: boolean | ((currentOpen: boolean) => boolean)) => {
+      const openState = typeof value === "function" ? value(open) : value
+      if (setOpenProp) {
+        setOpenProp(openState)
+      } else {
+        _setOpen(openState)
+      }
+      if (typeof document !== "undefined") {
         document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
-      },
-      [setOpenProp, open]
-    )
+      }
+    },
+    [setOpenProp, open]
+  )
 
-    const toggleSidebar = React.useCallback(() => {
-      return isMobileHookVal
-        ? setOpenMobile((current) => !current)
-        : setOpen((current) => !current)
-    }, [isMobileHookVal, setOpen, setOpenMobile])
+  const toggleSidebar = React.useCallback(() => {
+    return isMobileHookVal
+      ? setOpenMobile((current) => !current)
+      : setOpen((current) => !current)
+  }, [isMobileHookVal, setOpen, setOpenMobile])
 
-    React.useEffect(() => {
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && typeof document !== "undefined") {
+      const cookieValue = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+        ?.split("=")[1]
+      if (cookieValue !== undefined) {
+        const parsedValue = cookieValue === "true"
+        if (open !== parsedValue) { // Only set if different from current or prop-driven state
+          if (setOpenProp) {
+            // If controlled, let the controlling component know about cookie state
+            // This might be tricky if cookie state conflicts with prop state.
+            // For now, we assume if setOpenProp exists, it handles cookie persistence itself or ignores it.
+          } else {
+            _setOpen(parsedValue);
+          }
+        }
+      }
+
       const handleKeyDown = (event: KeyboardEvent) => {
         if (
           event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
@@ -103,45 +121,47 @@ const SidebarProvider = React.forwardRef<
       }
       window.addEventListener("keydown", handleKeyDown)
       return () => window.removeEventListener("keydown", handleKeyDown)
-    }, [toggleSidebar])
+    }
+  }, [toggleSidebar, open, setOpenProp]) // Added open and setOpenProp to dependencies
 
-    const state = open ? "expanded" : "collapsed"
+  const state = open ? "expanded" : "collapsed"
 
-    const contextValue = React.useMemo<SidebarContext>(
-      () => ({
-        state,
-        open,
-        setOpen,
-        isMobile: isMobileHookVal,
-        openMobile,
-        setOpenMobile,
-        toggleSidebar,
-      }),
-      [state, open, setOpen, isMobileHookVal, openMobile, setOpenMobile, toggleSidebar]
-    )
+  const contextValue = React.useMemo<SidebarContextValue>(
+    () => ({
+      state,
+      open,
+      setOpen,
+      isMobile: isMobileHookVal,
+      openMobile,
+      setOpenMobile,
+      toggleSidebar,
+    }),
+    [state, open, setOpen, isMobileHookVal, openMobile, setOpenMobile, toggleSidebar]
+  )
 
-    return (
-        <div
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH,
-              "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-              ...style,
-            } as React.CSSProperties
-          }
-          className={cn(
-            "group/sidebar-wrapper flex min-h-svh w-full", // Removed bg-sidebar from here
-            className
-          )}
-          ref={ref}
-          {...props}
-        >
-          {children}
-        </div>
-    )
-  }
-)
+  return (
+    <SidebarContext.Provider value={contextValue}>
+      <div
+        style={
+          {
+            "--sidebar-width": SIDEBAR_WIDTH,
+            "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
+            ...style,
+          } as React.CSSProperties
+        }
+        className={cn(
+          "group/sidebar-wrapper flex min-h-svh w-full",
+          className
+        )}
+        {...props} // Spread remaining div props
+      >
+        {children}
+      </div>
+    </SidebarContext.Provider>
+  )
+}
 SidebarProvider.displayName = "SidebarProvider"
+
 
 const Sidebar = React.forwardRef<
   HTMLDivElement,
@@ -202,42 +222,35 @@ const Sidebar = React.forwardRef<
     return (
       <div
         ref={ref}
-        className="group peer hidden md:flex flex-col text-sidebar-foreground" // Changed to md:flex and added flex-col
+        className="group peer hidden md:flex flex-col text-sidebar-foreground" 
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
       >
-        {/* This is what handles the sidebar gap on desktop */}
         <div
           className={cn(
             "duration-200 relative h-svh bg-transparent transition-[width] ease-linear",
-            // Mobile first: default to w-0
-            "w-0",
-            // Desktop states for width:
+            "w-0", // Mobile first
             "md:group-data-[collapsible=offcanvas]:w-0",
-            "md:w-[--sidebar-width]", // Default desktop width when expanded
             variant === "floating" || variant === "inset"
-              ? "md:group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-              : "md:group-data-[collapsible=icon]:w-[--sidebar-width-icon]",
-            "group-data-[side=right]:rotate-180" // This seems odd for a spacer, might be for RTL fixed content
+              ? "md:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
+              : "md:w-[--sidebar-width-icon]", // Default icon width
+            "md:group-data-[state=expanded]:w-[--sidebar-width]", // Expanded width
+            "group-data-[side=right]:rotate-180"
           )}
         />
-        {/* This is the actual fixed sidebar content */}
         <div
           className={cn(
             "duration-200 fixed inset-y-0 z-10 h-svh transition-[left,right,width] ease-linear",
-            "hidden md:flex", // Ensure it's flex for children
-            // Mobile first: default to w-0 or offscreen
+            "hidden md:flex", 
             "w-0",
             side === "left"
               ? "left-0 md:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
               : "right-0 md:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-            // Desktop widths
-            "md:w-[--sidebar-width]",
             variant === "floating" || variant === "inset"
-              ? "p-2 md:group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-              : "md:group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
+              ? "p-2 md:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)] md:group-data-[state=expanded]:w-[--sidebar-width]"
+              : "md:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l md:group-data-[state=expanded]:w-[--sidebar-width]",
             className
           )}
           {...props}
@@ -318,8 +331,7 @@ const SidebarInset = React.forwardRef<
     <main
       ref={ref}
       className={cn(
-        "relative flex min-h-svh flex-1 flex-col bg-background w-full", // Added w-full here
-        // Desktop inset variant adjustments:
+        "relative flex min-h-svh flex-1 flex-col bg-background w-full", 
         "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))]",
         "md:peer-data-[variant=inset]:m-2",
         "md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2", 
@@ -763,5 +775,5 @@ export {
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
+  SidebarContext // Exporting SidebarContext for potential direct use if ever needed, though useSidebar is preferred
 }
-
