@@ -29,10 +29,18 @@ export async function getProducts(): Promise<Product[]> {
       ...doc.data() as Omit<Product, 'id'> // Cast data and omit 'id'
     }));
     return productList;
-  } catch (error) {
-    console.error("Error fetching products:", error);
-    // In a real app, you might want to return a specific error structure
-    throw new Error("Failed to fetch products.");
+  } catch (error: any) { // Added :any to access error.code
+    let errorMessage = "Failed to fetch products. Please check server logs for details.";
+    if (error.code === 'permission-denied') {
+      errorMessage = "Firestore permission denied. Please check your security rules in the Firebase console.";
+      console.error("Firestore permission denied while fetching products. Original error:", error);
+    } else {
+      console.error("Error fetching products:", error);
+    }
+    // For a better UX, especially if this function were called directly from a component
+    // without a robust error handling layer, returning an object with an error field
+    // might be preferable. However, throwing here is consistent with how ProductsPage handles it.
+    throw new Error(errorMessage);
   }
 }
 
@@ -58,9 +66,13 @@ export async function addProduct(data: ProductFormInput): Promise<{ success: boo
     revalidatePath('/products');
 
     return { success: true, product: { id: docRef.id, ...productData as Omit<Product, 'id'> } };
-  } catch (e) {
+  } catch (e: any) {
     console.error("Error adding document: ", e);
-    return { success: false, error: "Failed to add product." };
+    let errorMessage = "Failed to add product.";
+    if (e.code === 'permission-denied') {
+      errorMessage = "Firestore permission denied. Please check your security rules.";
+    }
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -84,7 +96,7 @@ export async function updateProduct(id: string, data: ProductFormInput): Promise
       category: validation.data.category,
       price: validation.data.price,
       stock: validation.data.stock,
-      imageUrl: validation.data.imageUrl === '' ? null : validation.data.imageUrl, // Set imageUrl to null if empty string
+      imageUrl: validation.data.imageUrl === '' ? `https://placehold.co/400x300.png?text=${encodeURIComponent(validation.data.name)}` : validation.data.imageUrl,
     };
 
     await updateDoc(productRef, updatedData);
@@ -97,9 +109,13 @@ export async function updateProduct(id: string, data: ProductFormInput): Promise
     const updatedProduct = { id: updatedProductDoc.id, ...updatedProductDoc.data() as Omit<Product, 'id'> };
 
     return { success: true, product: updatedProduct };
-  } catch (e) {
+  } catch (e: any) {
     console.error("Error updating document: ", e);
-    return { success: false, error: "Failed to update product." };
+    let errorMessage = "Failed to update product.";
+    if (e.code === 'permission-denied') {
+      errorMessage = "Firestore permission denied. Please check your security rules.";
+    }
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -112,9 +128,13 @@ export async function deleteProduct(id: string): Promise<{ success: boolean; err
     revalidatePath('/products');
 
     return { success: true };
-  } catch (e) {
+  } catch (e: any) {
     console.error("Error deleting document: ", e);
-    return { success: false, error: "Failed to delete product." };
+    let errorMessage = "Failed to delete product.";
+    if (e.code === 'permission-denied') {
+      errorMessage = "Firestore permission denied. Please check your security rules.";
+    }
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -129,7 +149,7 @@ export async function handleSuggestCategory(productName: string): Promise<{ cate
     if (productCategories.includes(result.category as ProductCategory)) {
       return { category: result.category as ProductCategory };
     }
-    return { category: "Uncategorized" }; // Default if AI suggests something outside our enum
+    return { category: "Uncategorized" as ProductCategory }; // Default if AI suggests something outside our enum
   } catch (error) {
     console.error("AI Category Suggestion Error:", error);
     return { error: "Failed to suggest category. Please select manually." };

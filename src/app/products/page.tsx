@@ -19,10 +19,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { ProductForm } from "./components/product-form";
-import type { Product, ProductFormInput } from "@/lib/types";
+import type { Product } from "@/lib/types";
+import type { ProductFormInput } from "./actions"; // Ensure ProductFormInput is imported if not already part of Product
 import { getProducts, addProduct, updateProduct, deleteProduct } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -54,8 +54,12 @@ export default function ProductsPage() {
     try {
       const data = await getProducts();
       setProducts(data);
-    } catch (error) {
-      toast({ title: "Error fetching products", description: "Could not load product data.", variant: "destructive" });
+    } catch (error: any) {
+      toast({ 
+        title: "Error Fetching Products", 
+        description: error.message || "Could not load product data. Check server console for details.", 
+        variant: "destructive" 
+      });
     }
     setIsLoading(false);
   };
@@ -97,7 +101,7 @@ export default function ProductsPage() {
     if (result.success) {
       fetchProducts(); // Refresh list
     }
-    return result;
+    return result; // This will be handled by ProductForm for toast messages
   };
 
   const filteredProducts = products.filter(product =>
@@ -117,13 +121,16 @@ export default function ProductsPage() {
       />
 
       <div className="mb-4">
-        <Input
-          placeholder="Search products by name or category..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-          icon={<Search className="h-4 w-4 text-muted-foreground" />}
-        />
+        <div className="relative max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search products by name or category..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
       </div>
 
       {isLoading ? (
@@ -161,9 +168,10 @@ export default function ProductsPage() {
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>
                       <Badge variant={
-                        product.category === "Drinks" ? "default" :
-                        product.category === "Food" ? "secondary" :
-                        product.category === "Merchandise" ? "outline" : "default"
+                        product.category === "Bolsa de Café" ? "default" :
+                        product.category === "Aji" ? "secondary" :
+                        // Add other categories here if needed
+                        "outline" // Default badge variant
                       } className="capitalize">
                         {product.category}
                       </Badge>
@@ -206,7 +214,7 @@ export default function ProductsPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center h-24">
-                    No products found.
+                    {searchTerm ? `No products found for "${searchTerm}".` : "No products found. Try adding some!"}
                   </TableCell>
                 </TableRow>
               )}
