@@ -35,6 +35,13 @@ import { cn } from "@/lib/utils";
 // Mock data for income - replace with server actions and DB
 let mockIncomes: OtherIncome[] = [];
 
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
 export default function IncomePage() {
   const [incomes, setIncomes] = useState<OtherIncome[]>(mockIncomes);
   const [isLoading, setIsLoading] = useState(false); // For potential future API calls
@@ -152,7 +159,9 @@ export default function IncomePage() {
                   <TableRow key={income.id}>
                     <TableCell>{format(new Date(income.incomeDate), "PPP")}</TableCell>
                     <TableCell className="font-medium">{income.description}</TableCell>
-                    <TableCell className="text-right text-green-600 font-semibold">${income.amount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right text-green-600 font-semibold">
+                      {currencyFormatter.format(income.amount)}
+                    </TableCell>
                     <TableCell className="text-right">
                        <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(income)} className="mr-2 hover:text-accent">
                         <Edit className="h-4 w-4" />
@@ -199,7 +208,7 @@ export default function IncomePage() {
                 <Input 
                   id="income-amount" 
                   type="number"
-                  step="0.01"
+                  step="0.01" // Keep step for input flexibility, display will format
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
