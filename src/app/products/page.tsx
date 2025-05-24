@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
@@ -104,12 +105,10 @@ export default function ProductsPage() {
 
   const getCategoryBadgeVariant = (category: Product["category"]) => {
     switch (category) {
-      case "Drinks":
+      case "Bolsa de Café":
         return "default";
-      case "Food":
+      case "Aji":
         return "secondary";
-      case "Merchandise":
-        return "outline"; // Example, adjust as needed
       default:
         return "outline";
     }
@@ -126,7 +125,7 @@ export default function ProductsPage() {
         } 
       />
 
-      <div className="mb-6">
+      {/* <div className="mb-6">
         <div className="relative max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -137,14 +136,17 @@ export default function ProductsPage() {
             className="pl-8"
           />
         </div>
-      </div>
+      </div> */}
 
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full">
+        <div 
+          className="grid gap-6 w-full" 
+          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}
+        >
           {filteredProducts.length > 0 ? (
             filteredProducts.map((product) => (
               <Card key={product.id} className="shadow-md flex flex-col">
@@ -242,3 +244,5 @@ export default function ProductsPage() {
     </div>
   );
 }
+
+    
