@@ -72,20 +72,16 @@ function AppSpecificSidebarHeader() {
     setMounted(true);
   }, []);
 
-  const titleElement = (
-    <h1 className="text-xl font-semibold text-primary group-data-[collapsible=icon]:hidden">
-      BrewBooks
-    </h1>
-  );
-
   return (
     <UiSidebarHeader className="p-4" suppressHydrationWarning>
       <Link href="/" className="flex items-center gap-2">
         <Coffee className="h-8 w-8 text-primary" />
         {mounted && isMobile ? (
-          <SheetTitle asChild>{titleElement}</SheetTitle>
+          <SheetTitle className="text-xl font-semibold text-primary">BrewBooks</SheetTitle>
         ) : (
-          titleElement
+          <h1 className="text-xl font-semibold text-primary group-data-[collapsible=icon]:hidden">
+            BrewBooks
+          </h1>
         )}
       </Link>
     </UiSidebarHeader>
