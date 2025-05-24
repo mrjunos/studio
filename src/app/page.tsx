@@ -32,14 +32,17 @@ export default function DashboardPage() {
       setLoading(true);
       const result = await getDashboardMetrics();
 
-      if (result.success && result.totalSales !== undefined) {
+      if (result.success) {
         setMetrics(prevMetrics =>
           prevMetrics.map(metric => {
-            if (metric.title === "Total Sales") {
-              return { ...metric, value: currencyFormatter.format(result.totalSales!) };
+            if (metric.title === "Total Sales" && result.totalSales !== undefined) {
+              return { ...metric, value: currencyFormatter.format(result.totalSales) };
+            }
+            if (metric.title === "Other Income" && result.otherIncomeTotal !== undefined) {
+              return { ...metric, value: currencyFormatter.format(result.otherIncomeTotal) };
             }
             // TODO: Update other metrics here when they are implemented in the action
-            // e.g., Other Income, Top Selling Product, Active Products
+            // e.g., Top Selling Product, Active Products
             return metric;
           })
         );
@@ -49,18 +52,15 @@ export default function DashboardPage() {
           description: result.error,
           variant: "destructive",
         });
-        // On error, we can keep showing initial/placeholder values or clear them.
-        // For now, we stop loading but retain the initial values if fetch fails.
       }
       // Simulate other metrics loading for a bit longer for demo purposes
       // In a real app, each metric might have its own fetch or all come from getDashboardMetrics
+      // For metrics not yet implemented via Firestore, we can keep placeholders or remove this timeout.
+      // For now, we'll only keep placeholders for "Top Selling Product" and "Active Products".
       setTimeout(() => {
          setMetrics(prevMetrics =>
           prevMetrics.map(metric => {
-            if (metric.title === "Other Income" && metric.value === "$0.00") { // Only update if not already set
-              return { ...metric, value: "$250.00" }; // Placeholder until implemented
-            }
-            if (metric.title === "Top Selling Product" && metric.value === "N/A") {
+            if (metric.title === "Top Selling Product" && metric.value === "N/A") { // Only update if not already set
               return { ...metric, value: "Espresso" }; // Placeholder
             }
             if (metric.title === "Active Products" && metric.value === "0") {
@@ -69,35 +69,50 @@ export default function DashboardPage() {
             return metric;
           })
         );
-        setLoading(false);
-      }, 500); // Short delay after fetching main metric
+        setLoading(false); // Set loading to false after all data (real or placeholder) is set
+      }, 200); // Shorter delay, main metrics should load quickly
     };
 
     fetchMetrics();
-  }, [toast]); // Added toast to dependency array
+  }, [toast]);
+
+  const isLoadingMetric = (metricTitle: string, currentValue: string | number) => {
+    if (!loading) return false; // If overall loading is done, no metric is loading
+
+    const initialValueForMetric = initialMetrics.find(m => m.title === metricTitle)?.value;
+    
+    // Specific logic for Total Sales and Other Income (fetched from Firestore)
+    if (metricTitle === "Total Sales" || metricTitle === "Other Income") {
+        return currentValue === initialValueForMetric;
+    }
+    // For other metrics, they are considered loading if their value is still the initial placeholder.
+    // This part can be removed once all metrics are fetched from backend.
+    return currentValue === initialValueForMetric;
+  };
+
 
   return (
     <div className="p-6">
       <PageTitle title="Dashboard" />
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {metrics.map((metric, index) => (
+        {metrics.map((metric) => (
           <Card key={metric.title} className="shadow-md hover:shadow-lg transition-shadow duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              {loading && (metric.title === "Total Sales" || metric.value === initialMetrics.find(m => m.title === metric.title)?.value) ? (
+              {isLoadingMetric(metric.title, metric.value) ? (
                 <Skeleton className="h-6 w-32" />
               ) : (
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   {metric.title}
                 </CardTitle>
               )}
-              {loading && (metric.title === "Total Sales" || metric.value === initialMetrics.find(m => m.title === metric.title)?.value) ? (
+              {isLoadingMetric(metric.title, metric.value) ? (
                 <Skeleton className="h-6 w-6 rounded-full" />
               ) : (
                 <metric.icon className="h-5 w-5 text-accent" />
               )}
             </CardHeader>
             <CardContent>
-              {loading && (metric.title === "Total Sales" || metric.value === initialMetrics.find(m => m.title === metric.title)?.value) ? (
+              {isLoadingMetric(metric.title, metric.value) ? (
                 <>
                   <Skeleton className="h-8 w-24 mt-1" />
                   <Skeleton className="h-4 w-48 mt-2" />
@@ -120,7 +135,7 @@ export default function DashboardPage() {
             <CardTitle>Recent Sales Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {loading ? ( // General loading for placeholder sections
               <div className="space-y-4">
                 <Skeleton className="h-8 w-full" />
                 <Skeleton className="h-8 w-full" />
@@ -136,7 +151,7 @@ export default function DashboardPage() {
             <CardTitle>Inventory Status</CardTitle>
           </CardHeader>
           <CardContent>
-             {loading ? (
+             {loading ? ( // General loading for placeholder sections
               <div className="space-y-4">
                 <Skeleton className="h-8 w-full" />
                 <Skeleton className="h-8 w-full" />

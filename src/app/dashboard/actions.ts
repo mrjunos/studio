@@ -3,13 +3,13 @@
 
 import { db } from "@/lib/firebase";
 import { collection, getDocs, type Timestamp } from "firebase/firestore";
-import type { Sale } from "@/lib/types";
+import type { Sale } from "@/lib/types"; // Sale type might not be directly needed if only metrics are returned
 
 export async function getDashboardMetrics(): Promise<{
   success: boolean;
   totalSales?: number;
+  otherIncomeTotal?: number;
   // Placeholder for other metrics to be implemented later
-  // otherIncomeTotal?: number;
   // topSellingProduct?: { name: string; quantity: number };
   // activeProductsCount?: number;
   error?: string;
@@ -20,12 +20,24 @@ export async function getDashboardMetrics(): Promise<{
     const salesSnapshot = await getDocs(salesCollectionRef);
     let currentTotalSales = 0;
     salesSnapshot.forEach(doc => {
-      // Firestore returns Timestamps for date fields, ensure totalAmount is correctly accessed.
       const saleData = doc.data(); 
       currentTotalSales += saleData.totalAmount || 0;
     });
 
-    return { success: true, totalSales: currentTotalSales };
+    // Calculate Other Income Total
+    const otherIncomesCollectionRef = collection(db, 'otherIncomes');
+    const otherIncomesSnapshot = await getDocs(otherIncomesCollectionRef);
+    let currentOtherIncomeTotal = 0;
+    otherIncomesSnapshot.forEach(doc => {
+      const incomeData = doc.data();
+      currentOtherIncomeTotal += incomeData.amount || 0;
+    });
+
+    return { 
+      success: true, 
+      totalSales: currentTotalSales,
+      otherIncomeTotal: currentOtherIncomeTotal 
+    };
 
   } catch (error: any) {
     console.error("Error fetching dashboard metrics:", error);
