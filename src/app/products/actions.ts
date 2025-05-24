@@ -1,17 +1,13 @@
-
+// src/app/products/actions.ts
 "use server";
 
 import { suggestProductCategory, SuggestProductCategoryInput, SuggestProductCategoryOutput } from "@/ai/flows/suggest-product-category";
 import { z } from "zod";
 import type { Product, ProductCategory } from "@/lib/types";
-import { productCategories } from "@/lib/types"; // Imported from types.ts
-
-// Dummy data store for products (replace with actual database logic)
-let products: Product[] = [
-  { id: "1", name: "Espresso", category: "Drinks", price: 2.50, stock: 100, imageUrl: "https://placehold.co/400x300.png?text=Espresso" },
-  { id: "2", name: "Croissant", category: "Food", price: 3.00, stock: 50, imageUrl: "https://placehold.co/400x300.png?text=Croissant" },
-  { id: "3", name: "Coffee Mug", category: "Merchandise", price: 12.00, stock: 20, imageUrl: "https://placehold.co/400x300.png?text=Mug" },
-];
+import { productCategories } from "@/lib/types";
+import { db } from "@/lib/firebase"; // Import Firestore instance
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
+import { revalidatePath } from 'next/cache';
 
 const ProductSchema = z.object({
   id: z.string().optional(), // Optional for new products
@@ -25,9 +21,19 @@ const ProductSchema = z.object({
 export type ProductFormInput = z.infer<typeof ProductSchema>;
 
 export async function getProducts(): Promise<Product[]> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return products;
+  try {
+    const productsCollection = collection(db, 'products');
+    const productSnapshot = await getDocs(productsCollection);
+    const productList = productSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data() as Omit<Product, 'id'> // Cast data and omit 'id'
+    }));
+    return productList;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    // In a real app, you might want to return a specific error structure
+    throw new Error("Failed to fetch products.");
+  }
 }
 
 export async function addProduct(data: ProductFormInput): Promise<{ success: boolean; product?: Product; error?: string }> {
@@ -36,14 +42,26 @@ export async function addProduct(data: ProductFormInput): Promise<{ success: boo
     return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
   }
 
-  const newProduct: Product = {
-    ...validation.data,
-    id: String(Date.now()), // Simple ID generation
-    category: validation.data.category as ProductCategory, // Ensure type
-    imageUrl: validation.data.imageUrl || `https://placehold.co/400x300.png?text=${encodeURIComponent(validation.data.name)}`,
-  };
-  products.push(newProduct);
-  return { success: true, product: newProduct };
+  try {
+    // Prepare data to be added to Firestore
+    const productData = {
+      name: validation.data.name,
+      category: validation.data.category,
+      price: validation.data.price,
+      stock: validation.data.stock,
+      imageUrl: validation.data.imageUrl || `https://placehold.co/400x300.png?text=${encodeURIComponent(validation.data.name)}`,
+    };
+
+    const docRef = await addDoc(collection(db, 'products'), productData);
+
+    // Revalidate the products page to show the new product
+    revalidatePath('/products');
+
+    return { success: true, product: { id: docRef.id, ...productData as Omit<Product, 'id'> } };
+  } catch (e) {
+    console.error("Error adding document: ", e);
+    return { success: false, error: "Failed to add product." };
+  }
 }
 
 export async function updateProduct(id: string, data: ProductFormInput): Promise<{ success: boolean; product?: Product; error?: string }> {
@@ -52,24 +70,52 @@ export async function updateProduct(id: string, data: ProductFormInput): Promise
     return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
   }
 
-  const productIndex = products.findIndex(p => p.id === id);
-  if (productIndex === -1) {
-    return { success: false, error: "Product not found" };
-  }
+  try {
+    const productRef = doc(db, 'products', id);
+    const productDoc = await getDoc(productRef);
 
-  const updatedProduct: Product = {
-    ...products[productIndex],
-    ...validation.data,
-    category: validation.data.category as ProductCategory,
-    imageUrl: validation.data.imageUrl || products[productIndex].imageUrl || `https://placehold.co/400x300.png?text=${encodeURIComponent(validation.data.name)}`,
-  };
-  products[productIndex] = updatedProduct;
-  return { success: true, product: updatedProduct };
+    if (!productDoc.exists()) {
+      return { success: false, error: "Product not found" };
+    }
+
+    // Prepare data for update
+    const updatedData = {
+      name: validation.data.name,
+      category: validation.data.category,
+      price: validation.data.price,
+      stock: validation.data.stock,
+      imageUrl: validation.data.imageUrl === '' ? null : validation.data.imageUrl, // Set imageUrl to null if empty string
+    };
+
+    await updateDoc(productRef, updatedData);
+
+    // Revalidate the products page to show the updated product
+    revalidatePath('/products');
+
+    // Fetch the updated document to return the full product data
+    const updatedProductDoc = await getDoc(productRef);
+    const updatedProduct = { id: updatedProductDoc.id, ...updatedProductDoc.data() as Omit<Product, 'id'> };
+
+    return { success: true, product: updatedProduct };
+  } catch (e) {
+    console.error("Error updating document: ", e);
+    return { success: false, error: "Failed to update product." };
+  }
 }
 
 export async function deleteProduct(id: string): Promise<{ success: boolean; error?: string }> {
-  products = products.filter(p => p.id !== id);
-  return { success: true };
+  try {
+    const productRef = doc(db, 'products', id);
+    await deleteDoc(productRef);
+
+    // Revalidate the products page to remove the deleted product
+    revalidatePath('/products');
+
+    return { success: true };
+  } catch (e) {
+    console.error("Error deleting document: ", e);
+    return { success: false, error: "Failed to delete product." };
+  }
 }
 
 export async function handleSuggestCategory(productName: string): Promise<{ category?: ProductCategory; error?: string }> {

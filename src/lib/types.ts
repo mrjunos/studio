@@ -1,7 +1,7 @@
 
-export type ProductCategory = "Drinks" | "Food" | "Merchandise" | "Uncategorized";
+export type ProductCategory = "Bolsa de Café" | "Aji";
 
-export const productCategories: ProductCategory[] = ["Drinks", "Food", "Merchandise", "Uncategorized"];
+export const productCategories: ProductCategory[] = ["Bolsa de Café", "Aji"];
 
 export interface Product {
   id: string;
