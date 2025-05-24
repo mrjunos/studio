@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
@@ -145,7 +144,7 @@ export default function ProductsPage() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full">
           {filteredProducts.length > 0 ? (
             filteredProducts.map((product) => (
               <Card key={product.id} className="shadow-md flex flex-col">
