@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -13,6 +14,7 @@ const ScrollArea = React.forwardRef<
     ref={ref}
     className={cn("relative overflow-hidden", className)}
     {...props}
+    suppressHydrationWarning // Added to handle client-side modifications by Radix
   >
     <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">
       {children}
@@ -39,6 +41,7 @@ const ScrollBar = React.forwardRef<
       className
     )}
     {...props}
+    suppressHydrationWarning // Also suppress for scrollbar which might have similar behavior
   >
     <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-border" />
   </ScrollAreaPrimitive.ScrollAreaScrollbar>
@@ -46,3 +49,4 @@ const ScrollBar = React.forwardRef<
 ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName
 
 export { ScrollArea, ScrollBar }
+
