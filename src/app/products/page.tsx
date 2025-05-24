@@ -4,7 +4,7 @@
 import { useState, useEffect, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { PageTitle } from "@/components/shared/page-title";
-import { PlusCircle, Edit, Trash2, Loader2, Search, Image as ImageIcon, Package2,DollarSign, Layers } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Loader2, Search, Image as ImageIcon, Layers, DollarSign } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +31,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export default function ProductsPage() {
@@ -105,18 +105,19 @@ export default function ProductsPage() {
 
   const getCategoryBadgeVariant = (category: Product["category"]) => {
     switch (category) {
-      case "Bolsa de Café":
+      case "Drinks":
         return "default";
-      case "Aji":
+      case "Food":
         return "secondary";
-      // Add other specific categories here if needed
+      case "Merchandise":
+        return "outline"; // Example, adjust as needed
       default:
         return "outline";
     }
   };
 
   return (
-    <>
+    <div className="p-6">
       <PageTitle 
         title="Product Management" 
         actions={
@@ -239,6 +240,6 @@ export default function ProductsPage() {
           />
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

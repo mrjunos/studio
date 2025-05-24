@@ -25,7 +25,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import { PlusCircle, Edit, Trash2, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import type { Product, InventoryAdjustment } from "@/lib/types";
 import { getProducts } from "@/app/products/actions";
 import { useToast } from "@/hooks/use-toast";
@@ -111,7 +111,7 @@ export default function InventoryPage() {
   };
 
   return (
-    <>
+    <div className="p-6">
       <PageTitle 
         title="Inventory Adjustments" 
         actions={
@@ -219,6 +219,6 @@ export default function InventoryPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

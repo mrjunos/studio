@@ -144,7 +144,7 @@ export default function IncomePage() {
 
 
   return (
-    <>
+    <div className="p-6">
       <PageTitle 
         title="Other Income" 
         actions={
@@ -295,6 +295,6 @@ export default function IncomePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

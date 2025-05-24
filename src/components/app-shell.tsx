@@ -25,15 +25,10 @@ import {
   Coffee,
   ShoppingCart,
   Archive,
-  DollarSign,
   Settings,
   Menu,
-  Home,
-  Package,
-  Users,
-  LineChart,
+  Landmark, // Changed from DollarSign for Other Income
   LogOut,
-  Landmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -77,7 +72,7 @@ function AppSpecificSidebarHeader() {
       <Link href="/" className="flex items-center gap-2">
         <Coffee className="h-8 w-8 text-primary" />
         {mounted && isMobile ? (
-          <SheetTitle className="text-xl font-semibold text-primary">BrewBooks</SheetTitle>
+           <SheetTitle className="text-xl font-semibold text-primary">BrewBooks</SheetTitle>
         ) : (
           <h1 className="text-xl font-semibold text-primary group-data-[collapsible=icon]:hidden">
             BrewBooks
@@ -162,15 +157,19 @@ function AppShellInternal({ children }: { children: ReactNode }) {
           </DropdownMenu>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset className="flex-1 overflow-y-auto">
+      {/* SidebarInset is a <main> HTML tag. It uses flex-1 to take available width.
+          It's also a flex-col to stack its children (header and content div). */}
+      <SidebarInset className="flex flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 px-6 backdrop-blur-md md:justify-end">
            <SidebarTrigger className="md:hidden"> {/* SidebarTrigger also uses useSidebar */}
               <Menu className="h-6 w-6" />
            </SidebarTrigger>
         </header>
-        <main className="p-6">
+        {/* This div now wraps the page children, takes remaining vertical space, and handles scrolling.
+            Pages will add their own padding (e.g., p-6) to this container's children. */}
+        <div className="flex-1 overflow-y-auto">
           {children}
-        </main>
+        </div>
       </SidebarInset>
     </div>
   );

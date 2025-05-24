@@ -149,7 +149,7 @@ export default function SalesPage() {
   };
 
   return (
-    <>
+    <div className="p-6">
       <PageTitle title="Sales Registration" />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 shadow-md">
@@ -254,6 +254,6 @@ export default function SalesPage() {
           )}
         </Card>
       </div>
-    </>
+    </div>
   );
 }

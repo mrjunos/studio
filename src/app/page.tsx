@@ -36,7 +36,7 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <>
+    <div className="p-6">
       <PageTitle title="Dashboard" />
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {loading
@@ -104,6 +104,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </>
+    </div>
   );
 }
