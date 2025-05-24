@@ -130,7 +130,7 @@ export default function ProductsPage() {
       ) : (
         <div 
           className="grid gap-6 w-full"
-          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(600px, 1fr))' }}
+          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))' }}
         >
           {filteredProducts.length > 0 ? (
             filteredProducts.map((product) => (
@@ -229,3 +229,4 @@ export default function ProductsPage() {
     </div>
   );
 }
+
