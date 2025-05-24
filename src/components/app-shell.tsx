@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import React from "react"; // Import React for useState and useEffect
 import {
   SidebarProvider,
   Sidebar,
@@ -65,22 +66,32 @@ const navItems: NavItem[] = [
 
 // New component specifically for the app's sidebar header logic
 function AppSpecificSidebarHeader() {
-  const { isMobile } = useSidebar(); // Now this can be used
+  const { isMobile } = useSidebar();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const titleElement = (
+    <h1 className="text-xl font-semibold text-primary group-data-[collapsible=icon]:hidden">
+      BrewBooks
+    </h1>
+  );
 
   return (
     <UiSidebarHeader className="p-4" suppressHydrationWarning> {/* Use the original SidebarHeader from ui */}
       <Link href="/" className="flex items-center gap-2">
         <Coffee className="h-8 w-8 text-primary" />
-        {isMobile ? (
-          <SheetTitle asChild>
-            <h1 className="text-xl font-semibold text-primary group-data-[collapsible=icon]:hidden">
-              BrewBooks
-            </h1>
-          </SheetTitle>
+        {/*
+          On the server: mounted=false (effectively), isMobile=false. Renders: titleElement.
+          On initial client render (before useEffect): mounted=false, isMobile=false. Renders: titleElement. This matches server.
+          After client mount: mounted=true. If isMobile becomes true, it re-renders with SheetTitle.
+        */}
+        {mounted && isMobile ? (
+          <SheetTitle asChild>{titleElement}</SheetTitle>
         ) : (
-          <h1 className="text-xl font-semibold text-primary group-data-[collapsible=icon]:hidden">
-            BrewBooks
-          </h1>
+          titleElement
         )}
       </Link>
     </UiSidebarHeader>
