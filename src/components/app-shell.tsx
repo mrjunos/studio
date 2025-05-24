@@ -68,7 +68,7 @@ function AppSpecificSidebarHeader() {
   const { isMobile } = useSidebar(); // Now this can be used
 
   return (
-    <UiSidebarHeader className="p-4"> {/* Use the original SidebarHeader from ui */}
+    <UiSidebarHeader className="p-4" suppressHydrationWarning> {/* Use the original SidebarHeader from ui */}
       <Link href="/" className="flex items-center gap-2">
         <Coffee className="h-8 w-8 text-primary" />
         {isMobile ? (
