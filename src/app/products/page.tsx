@@ -4,7 +4,7 @@
 import { useState, useEffect, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { PageTitle } from "@/components/shared/page-title";
-import { PlusCircle, Edit, Trash2, Loader2, Search, Image as ImageIcon, Layers, DollarSign } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Layers, DollarSign } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,6 @@ import type { ProductFormInput } from "./actions";
 import { getProducts, addProduct, updateProduct, deleteProduct } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import {
   AlertDialog,
@@ -32,7 +31,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -125,27 +123,13 @@ export default function ProductsPage() {
         } 
       />
 
-      {/* <div className="mb-6">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search products..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8"
-          />
-        </div>
-      </div> */}
-
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
         <div 
-          className="grid gap-6 w-full" 
-          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}
+          className="grid gap-6 w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
         >
           {filteredProducts.length > 0 ? (
             filteredProducts.map((product) => (
@@ -244,5 +228,3 @@ export default function ProductsPage() {
     </div>
   );
 }
-
-    
