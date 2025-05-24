@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import {
   SidebarProvider,
   Sidebar,
-  SidebarHeader,
+  SidebarHeader as UiSidebarHeader, // Renamed to avoid conflict
   SidebarContent,
   SidebarFooter,
   SidebarMenu,
@@ -15,6 +15,7 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
   SidebarInset,
+  useSidebar, // Import useSidebar
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -44,6 +45,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SheetTitle } from "@/components/ui/sheet";
 
 
 interface NavItem {
@@ -61,6 +63,31 @@ const navItems: NavItem[] = [
   { href: "/income", icon: Landmark, label: "Other Income", tooltip: "Track Other Income" },
 ];
 
+// New component specifically for the app's sidebar header logic
+function AppSpecificSidebarHeader() {
+  const { isMobile } = useSidebar(); // Now this can be used
+
+  return (
+    <UiSidebarHeader className="p-4"> {/* Use the original SidebarHeader from ui */}
+      <Link href="/" className="flex items-center gap-2">
+        <Coffee className="h-8 w-8 text-primary" />
+        {isMobile ? (
+          <SheetTitle asChild>
+            <h1 className="text-xl font-semibold text-primary group-data-[collapsible=icon]:hidden">
+              BrewBooks
+            </h1>
+          </SheetTitle>
+        ) : (
+          <h1 className="text-xl font-semibold text-primary group-data-[collapsible=icon]:hidden">
+            BrewBooks
+          </h1>
+        )}
+      </Link>
+    </UiSidebarHeader>
+  );
+}
+
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
@@ -68,14 +95,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <SidebarProvider defaultOpen>
       <div className="flex min-h-screen bg-background">
         <Sidebar variant="sidebar" collapsible="icon" className="border-r">
-          <SidebarHeader className="p-4">
-            <Link href="/" className="flex items-center gap-2">
-              <Coffee className="h-8 w-8 text-primary" />
-              <h1 className="text-xl font-semibold text-primary group-data-[collapsible=icon]:hidden">
-                BrewBooks
-              </h1>
-            </Link>
-          </SidebarHeader>
+          <AppSpecificSidebarHeader /> {/* Use the new component */}
           <Separator />
           <SidebarContent asChild>
             <ScrollArea className="h-full">
