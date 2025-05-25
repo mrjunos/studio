@@ -1,14 +1,10 @@
 
-// Import the functions you need from the SDKs you need
-import { initializeApp, type FirebaseApp } from "firebase/app";
-import { getAnalytics, type Analytics } from "firebase/analytics";
+// src/lib/firebase.ts
+import { initializeApp, getApp, getApps, type FirebaseApp } from "firebase/app";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getAuth, type Auth } from "firebase/auth";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { getAnalytics, type Analytics, isSupported } from "firebase/analytics";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -19,23 +15,100 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-// Initialize Firebase
-const app: FirebaseApp = initializeApp(firebaseConfig);
+let appSingleton: FirebaseApp | null = null;
+let firestoreSingleton: Firestore | null = null;
+let authSingleton: Auth | null = null;
+let analyticsSingleton: Analytics | null = null;
 
-// Initialize Analytics only on the client side
-let analytics: Analytics | null = null;
-if (typeof window !== 'undefined') {
-  try {
-    analytics = getAnalytics(app);
-  } catch (error) {
-    console.error("Failed to initialize Firebase Analytics:", error);
-    // You might want to handle this error more gracefully or log it to a monitoring service
+function initializeFirebase(): FirebaseApp {
+  if (appSingleton) {
+    return appSingleton;
   }
+
+  if (!firebaseConfig.projectId) {
+    console.error("Firebase projectId is not defined in environment variables. Firebase cannot be initialized.");
+    throw new Error("Firebase projectId is not defined. Firebase cannot be initialized.");
+  }
+
+  if (getApps().length === 0) {
+    try {
+      console.log("Initializing Firebase app with projectId:", firebaseConfig.projectId);
+      appSingleton = initializeApp(firebaseConfig);
+    } catch (error) {
+      console.error("CRITICAL: Firebase app initialization failed:", error);
+      throw new Error(`Firebase app initialization failed: ${error}`);
+    }
+  } else {
+    appSingleton = getApp();
+    console.log("Using existing Firebase app instance.");
+  }
+  return appSingleton;
 }
 
-// Initialize Firestore
-const db: Firestore = getFirestore(app);
-// Initialize Firebase Authentication and get a reference to the service
-const auth: Auth = getAuth(app);
+export function getFirebaseApp(): FirebaseApp {
+  if (!appSingleton) {
+    return initializeFirebase();
+  }
+  return appSingleton;
+}
 
-export { app, analytics, db, auth };
+export function getDb(): Firestore {
+  if (!firestoreSingleton) {
+    const currentApp = getFirebaseApp(); // Ensures app is initialized
+    try {
+      firestoreSingleton = getFirestore(currentApp);
+    } catch (error) {
+      console.error("Error initializing Firestore:", error);
+      throw new Error(`Failed to initialize Firestore: ${error}`);
+    }
+  }
+  return firestoreSingleton;
+}
+
+export function getFirebaseAuth(): Auth {
+  if (!authSingleton) {
+    const currentApp = getFirebaseApp(); // Ensures app is initialized
+    try {
+      authSingleton = getAuth(currentApp);
+    } catch (error) {
+      console.error("Error initializing Firebase Auth:", error);
+      throw new Error(`Failed to initialize Firebase Auth: ${error}`);
+    }
+  }
+  return authSingleton;
+}
+
+export function getClientAnalytics(): Analytics | null {
+  if (typeof window !== 'undefined') {
+    if (!analyticsSingleton) {
+      try {
+        const currentApp = getFirebaseApp(); // Ensures app is initialized
+        isSupported().then(supported => {
+          if (supported) {
+            try {
+              analyticsSingleton = getAnalytics(currentApp);
+            } catch (error) {
+               console.error("Error initializing Firebase Analytics on client:", error);
+            }
+          } else {
+            console.log("Firebase Analytics is not supported in this browser environment.");
+          }
+        }).catch(error => {
+          console.error("Error checking Firebase Analytics support:", error);
+        });
+      } catch (error) {
+        console.error("Error getting Firebase app for Analytics:", error);
+      }
+    }
+    // isSupported is async, so analyticsSingleton might still be null immediately after this call.
+    // Code using this should handle the possibility of null.
+    return analyticsSingleton;
+  }
+  return null; // Analytics is client-side only
+}
+
+// For AuthProvider and other parts that might need the auth instance directly.
+// This will initialize auth if it hasn't been already.
+export const auth = getFirebaseAuth();
+
+    

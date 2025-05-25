@@ -4,7 +4,7 @@
 import type { User } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { auth } from "@/lib/firebase"; // Ensure auth is exported from firebase.ts
+import { auth } from "@/lib/firebase"; // auth is now the initialized Auth instance
 import { Loader2 } from "lucide-react";
 
 interface AuthContextType {
@@ -20,11 +20,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
-    return () => unsubscribe();
+    let unsubscribe: (() => void) | undefined;
+    try {
+      // Ensure auth object is valid before subscribing
+      // The `auth` export from firebase.ts should now be reliably initialized or throw during its own initialization.
+      unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        setUser(currentUser);
+        setLoading(false);
+      }, (error) => {
+        console.error("Error in onAuthStateChanged listener:", error);
+        setUser(null);
+        setLoading(false);
+      });
+    } catch (error) {
+        console.error("Firebase Auth instance is not available in AuthProvider or onAuthStateChanged failed:", error);
+        setLoading(false); // Stop loading, but user will be null
+        return;
+    }
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const isLoggedIn = !!user;
@@ -51,3 +68,5 @@ export function useAuth() {
   }
   return context;
 }
+
+    

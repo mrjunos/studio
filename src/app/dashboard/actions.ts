@@ -1,7 +1,7 @@
 
 'use server';
 
-import { db } from "@/lib/firebase";
+import { getDb } from "@/lib/firebase"; // Use getDb
 import { collection, getDocs, query, where, doc, getDoc, type Timestamp, limit, orderBy } from "firebase/firestore";
 import type { Sale, Product, DailySalesData, LowStockItemForDashboard, Expense, OtherIncome } from "@/lib/types";
 import { format, subDays, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
@@ -24,7 +24,7 @@ export async function getDashboardMetrics(): Promise<{
   error?: string;
 }> {
   try {
-    const firestoreDb = db;
+    const firestoreDb = getDb();
     const today = new Date();
     const thirtyDaysAgo = subDays(today, 29); // Inclusive of today
 
@@ -166,7 +166,11 @@ export async function getDashboardMetrics(): Promise<{
     let errorMessage = "Error al obtener métricas del dashboard. Por favor revisa los logs del servidor.";
     if (error.code === 'permission-denied') {
       errorMessage = "Permiso denegado en Firestore. Por favor revisa tus reglas de seguridad.";
+    } else if (error.message && (error.message.includes("Firebase app is not configured") || error.message.includes("Firebase projectId is not defined"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
     }
     return { success: false, error: errorMessage };
   }
 }
+
+    

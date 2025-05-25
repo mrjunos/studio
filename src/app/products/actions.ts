@@ -6,23 +6,11 @@ import { suggestProductCategory, type SuggestProductCategoryInput, type SuggestP
 import { z } from "zod";
 import type { Product, ProductCategory } from "@/lib/types";
 import { productCategories } from "@/lib/types"; 
-import { db } from "@/lib/firebase"; 
+import { getDb } from "@/lib/firebase"; // Use getDb
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
 
 // TODO: Implement server-side authentication check for all write operations.
-// Example:
-// import { auth } from 'firebase-admin'; (Requires Firebase Admin SDK setup)
-// const verifyUser = async (idToken: string) => {
-//   try {
-//     const decodedToken = await auth().verifyIdToken(idToken);
-//     return decodedToken.uid;
-//   } catch (error) {
-//     console.error("Error verifying token:", error);
-//     return null;
-//   }
-// };
-// Then, in each action, call verifyUser(idTokenFromClient) and proceed only if valid.
 
 const ProductSchema = z.object({
   id: z.string().optional(), 
@@ -37,6 +25,7 @@ export type ProductFormInput = z.infer<typeof ProductSchema>;
 
 export async function getProducts(): Promise<Product[]> {
   try {
+    const db = getDb();
     const productsCollection = collection(db, 'products');
     const productSnapshot = await getDocs(productsCollection);
     const productList = productSnapshot.docs.map(doc => ({
@@ -45,12 +34,12 @@ export async function getProducts(): Promise<Product[]> {
     }));
     return productList;
   } catch (error: any) { 
+    console.error("Error al obtener productos:", error);
     let errorMessage = "Error al obtener productos. Revisa los logs del servidor.";
     if (error.code === 'permission-denied') {
       errorMessage = "Permiso denegado en Firestore. Revisa tus reglas de seguridad en la consola de Firebase.";
-      console.error("Permiso denegado en Firestore al obtener productos. Error original:", error);
-    } else {
-      console.error("Error al obtener productos:", error);
+    } else if (error.message && (error.message.includes("Firebase app is not configured") || error.message.includes("Firebase projectId is not defined"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
     }
     throw new Error(errorMessage);
   }
@@ -64,6 +53,7 @@ export async function addProduct(data: ProductFormInput): Promise<{ success: boo
   }
 
   try {
+    const db = getDb();
     const productData = {
       name: validation.data.name,
       category: validation.data.category,
@@ -82,6 +72,8 @@ export async function addProduct(data: ProductFormInput): Promise<{ success: boo
     let errorMessage = "Error al añadir producto.";
     if (e.code === 'permission-denied') {
       errorMessage = "Permiso denegado en Firestore. Revisa tus reglas de seguridad.";
+    } else if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
     }
     return { success: false, error: errorMessage };
   }
@@ -95,6 +87,7 @@ export async function updateProduct(id: string, data: ProductFormInput): Promise
   }
 
   try {
+    const db = getDb();
     const productRef = doc(db, 'products', id);
     const productDoc = await getDoc(productRef);
 
@@ -114,7 +107,7 @@ export async function updateProduct(id: string, data: ProductFormInput): Promise
     revalidatePath('/products');
     revalidatePath('/'); 
 
-    const updatedProductDoc = await getDoc(productRef);
+    const updatedProductDoc = await getDoc(productRef); // Re-fetch to get potentially server-modified data
     const updatedProduct = { id: updatedProductDoc.id, ...updatedProductDoc.data() as Omit<Product, 'id'> };
 
     return { success: true, product: updatedProduct };
@@ -123,6 +116,8 @@ export async function updateProduct(id: string, data: ProductFormInput): Promise
     let errorMessage = "Error al actualizar producto.";
     if (e.code === 'permission-denied') {
       errorMessage = "Permiso denegado en Firestore. Revisa tus reglas de seguridad.";
+    } else if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
     }
     return { success: false, error: errorMessage };
   }
@@ -131,6 +126,7 @@ export async function updateProduct(id: string, data: ProductFormInput): Promise
 export async function deleteProduct(id: string): Promise<{ success: boolean; error?: string }> {
   // Placeholder: Add server-side auth check here
   try {
+    const db = getDb();
     const productRef = doc(db, 'products', id);
     await deleteDoc(productRef);
     revalidatePath('/products');
@@ -141,6 +137,8 @@ export async function deleteProduct(id: string): Promise<{ success: boolean; err
     let errorMessage = "Error al eliminar producto.";
     if (e.code === 'permission-denied') {
       errorMessage = "Permiso denegado en Firestore. Revisa tus reglas de seguridad.";
+    } else if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
     }
     return { success: false, error: errorMessage };
   }
@@ -156,9 +154,13 @@ export async function handleSuggestCategory(productName: string): Promise<{ cate
     if (productCategories.includes(result.category as ProductCategory)) {
       return { category: result.category as ProductCategory };
     }
+    // If the category from AI is not in our predefined list, we could either return it as is,
+    // or return an error/undefined. For now, let's return it, but this might need refinement.
     return { category: result.category as ProductCategory };
   } catch (error) {
     console.error("Error en sugerencia de categoría por IA:", error);
     return { error: "Error al sugerir categoría. Por favor, selecciona manualmente." };
   }
 }
+
+    

@@ -4,7 +4,7 @@
 import { z } from "zod";
 import type { Expense, ExpenseCategory } from "@/lib/types";
 import { expenseCategories } from "@/lib/types";
-import { db } from "@/lib/firebase";
+import { getDb } from "@/lib/firebase"; // Use getDb
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, Timestamp, orderBy, query } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
 
@@ -30,6 +30,7 @@ const convertTimestampsToISO = (data: any) : any => {
 
 export async function getExpenses(): Promise<Expense[]> {
   try {
+    const db = getDb();
     const expensesCollection = collection(db, 'expenses');
     const q = query(expensesCollection, orderBy("expenseDate", "desc"));
     const expenseSnapshot = await getDocs(q);
@@ -40,7 +41,11 @@ export async function getExpenses(): Promise<Expense[]> {
     return expenseList;
   } catch (error: any) {
     console.error("Error al obtener gastos:", error);
-    throw new Error(`Error al obtener gastos. ${error.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}`);
+    let errorMessage = `Error al obtener gastos. ${error.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}`;
+    if (error.message && (error.message.includes("Firebase app is not configured") || error.message.includes("Firebase projectId is not defined"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
+    }
+    throw new Error(errorMessage);
   }
 }
 
@@ -52,6 +57,7 @@ export async function addExpense(data: ExpenseFormInput): Promise<{ success: boo
   }
 
   try {
+    const db = getDb();
     const expenseData = {
       ...validation.data,
       expenseDate: Timestamp.fromDate(validation.data.expenseDate),
@@ -63,7 +69,11 @@ export async function addExpense(data: ExpenseFormInput): Promise<{ success: boo
     return { success: true, expense: newExpense as Expense };
   } catch (e: any) {
     console.error("Error al añadir documento de gasto: ", e);
-    return { success: false, error: `Error al añadir gasto. ${e.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}` };
+    let errorMessage = `Error al añadir gasto. ${e.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}`;
+     if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
+    }
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -75,6 +85,7 @@ export async function updateExpense(id: string, data: ExpenseFormInput): Promise
   }
 
   try {
+    const db = getDb();
     const expenseRef = doc(db, 'expenses', id);
     const expenseDoc = await getDoc(expenseRef);
 
@@ -94,13 +105,18 @@ export async function updateExpense(id: string, data: ExpenseFormInput): Promise
     return { success: true, expense: updatedExpense as Expense };
   } catch (e: any) {
     console.error("Error al actualizar documento de gasto: ", e);
-    return { success: false, error: `Error al actualizar gasto. ${e.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}` };
+    let errorMessage = `Error al actualizar gasto. ${e.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}`;
+     if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
+    }
+    return { success: false, error: errorMessage };
   }
 }
 
 export async function deleteExpense(id: string): Promise<{ success: boolean; error?: string }> {
   // Placeholder: Add server-side auth check here
   try {
+    const db = getDb();
     const expenseRef = doc(db, 'expenses', id);
     await deleteDoc(expenseRef);
     revalidatePath('/expenses');
@@ -108,6 +124,12 @@ export async function deleteExpense(id: string): Promise<{ success: boolean; err
     return { success: true };
   } catch (e: any) {
     console.error("Error al eliminar documento de gasto: ", e);
-    return { success: false, error: `Error al eliminar gasto. ${e.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}` };
+    let errorMessage = `Error al eliminar gasto. ${e.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}`;
+    if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
+    }
+    return { success: false, error: errorMessage };
   }
 }
+
+    

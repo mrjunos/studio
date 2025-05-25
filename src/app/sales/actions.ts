@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import type { Sale, Product } from "@/lib/types";
-import { db } from "@/lib/firebase"; 
+import { getDb } from "@/lib/firebase"; // Use getDb
 import { collection, addDoc, doc, getDoc, writeBatch, Timestamp, increment, getDocs, query, orderBy } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
 
@@ -32,6 +32,7 @@ const convertSaleTimestampsToISO = (data: any): any => {
 
 export async function getSales(): Promise<Sale[]> {
   try {
+    const db = getDb();
     const salesCollection = collection(db, 'sales');
     const q = query(salesCollection, orderBy("saleDate", "desc"));
     const salesSnapshot = await getDocs(q);
@@ -42,7 +43,11 @@ export async function getSales(): Promise<Sale[]> {
     return salesList;
   } catch (error: any) {
     console.error("Error al obtener ventas:", error);
-    throw new Error(`Error al obtener historial de ventas. ${error.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}`);
+    let errorMessage = `Error al obtener historial de ventas. ${error.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}`;
+     if (error.message && (error.message.includes("Firebase app is not configured") || error.message.includes("Firebase projectId is not defined"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
+    }
+    throw new Error(errorMessage);
   }
 }
 
@@ -59,6 +64,7 @@ export async function processSale(
   }
 
   try {
+    const db = getDb();
     const batch = writeBatch(db);
     const unavailableItems: {productId: string, name: string, availableStock: number}[] = [];
 
@@ -102,9 +108,13 @@ export async function processSale(
     let errorMessage = "Error al procesar la venta.";
     if (e.code === 'permission-denied') {
       errorMessage = "Permiso denegado en Firestore. Revisa tus reglas de seguridad.";
-    } else if (e.message.includes("stock") || e.message.includes("product")) { 
+    } else if (e.message && (e.message.includes("stock") || (e.message && e.message.includes("product"))) ) { 
         errorMessage = e.message;
+    } else if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
     }
     return { success: false, error: errorMessage };
   }
 }
+
+    

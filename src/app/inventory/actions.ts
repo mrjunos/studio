@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import type { InventoryAdjustment } from "@/lib/types";
-import { db } from "@/lib/firebase"; 
+import { getDb } from "@/lib/firebase"; // Use getDb
 import { collection, getDocs, addDoc, doc, getDoc, Timestamp, increment, writeBatch, orderBy, query } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
 
@@ -29,6 +29,7 @@ const convertTimestampsToISO = (data: any) : any => {
 
 export async function getInventoryAdjustments(): Promise<InventoryAdjustment[]> {
   try {
+    const db = getDb();
     const adjustmentsCollection = collection(db, 'inventoryAdjustments');
     const q = query(adjustmentsCollection, orderBy("adjustmentDate", "desc"));
     const adjustmentSnapshot = await getDocs(q);
@@ -39,7 +40,11 @@ export async function getInventoryAdjustments(): Promise<InventoryAdjustment[]> 
     return adjustmentList;
   } catch (error: any) {
     console.error("Error al obtener ajustes de inventario:", error);
-    throw new Error(`Error al obtener ajustes de inventario. ${error.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}`);
+    let errorMessage = `Error al obtener ajustes de inventario. ${error.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}`;
+    if (error.message && (error.message.includes("Firebase app is not configured") || error.message.includes("Firebase projectId is not defined"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
+    }
+    throw new Error(errorMessage);
   }
 }
 
@@ -55,6 +60,7 @@ export async function addInventoryAdjustment(data: InventoryAdjustmentFormInput,
   const { productId, quantityChange } = validation.data;
 
   try {
+    const db = getDb();
     const productRef = doc(db, 'products', productId);
     const adjustmentCollectionRef = collection(db, 'inventoryAdjustments');
 
@@ -94,6 +100,12 @@ export async function addInventoryAdjustment(data: InventoryAdjustmentFormInput,
 
   } catch (e: any) {
     console.error("Error al añadir ajuste de inventario: ", e);
-    return { success: false, error: `Error al añadir ajuste de inventario. ${e.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}` };
+    let errorMessage = `Error al añadir ajuste de inventario. ${e.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}`;
+    if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
+    }
+    return { success: false, error: errorMessage };
   }
 }
+
+    
