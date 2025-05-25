@@ -3,7 +3,8 @@
 
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, doc, getDoc, type Timestamp, limit, orderBy } from "firebase/firestore";
-import type { Sale, Product, RecentSaleForDashboard, LowStockItemForDashboard } from "@/lib/types";
+import type { Sale, Product, DailySalesData, LowStockItemForDashboard } from "@/lib/types";
+import { format, subDays, startOfDay, endOfDay, eachDayOfInterval, isSameDay } from 'date-fns';
 
 export async function getDashboardMetrics(): Promise<{
   success: boolean;
@@ -11,42 +12,29 @@ export async function getDashboardMetrics(): Promise<{
   otherIncomeTotal?: number;
   topSellingProduct?: { name: string; quantity: number } | null;
   activeProductsCount?: number;
-  recentSales?: RecentSaleForDashboard[];
+  recentSales?: DailySalesData[];
   lowStockItems?: LowStockItemForDashboard[];
   error?: string;
 }> {
   try {
     const firestoreDb = db;
 
-    // Calculate Total Sales & Prepare for Top Selling Product
+    // --- Total Sales & Top Selling Product ---
     const salesCollectionRef = collection(firestoreDb, 'sales');
-    const salesSnapshot = await getDocs(salesCollectionRef);
+    const allSalesSnapshot = await getDocs(salesCollectionRef);
     let currentTotalSales = 0;
     const productSalesCount: { [productId: string]: number } = {};
+    const salesData: Array<Omit<Sale, 'id' | 'saleDate'> & { saleDate: Timestamp }> = [];
 
-    salesSnapshot.forEach(doc => {
+    allSalesSnapshot.forEach(doc => {
       const saleData = doc.data() as Omit<Sale, 'id' | 'saleDate'> & { saleDate: Timestamp };
+      salesData.push(saleData);
       currentTotalSales += saleData.totalAmount || 0;
       saleData.items.forEach(item => {
         productSalesCount[item.productId] = (productSalesCount[item.productId] || 0) + item.quantity;
       });
     });
 
-    // Calculate Other Income Total
-    const otherIncomesCollectionRef = collection(firestoreDb, 'otherIncomes');
-    const otherIncomesSnapshot = await getDocs(otherIncomesCollectionRef);
-    let currentOtherIncomeTotal = 0;
-    otherIncomesSnapshot.forEach(doc => {
-      const incomeData = doc.data();
-      currentOtherIncomeTotal += incomeData.amount || 0;
-    });
-
-    // Calculate Active Products Count
-    const activeProductsQuery = query(collection(firestoreDb, 'products'), where("stock", ">", 0));
-    const activeProductsSnapshot = await getDocs(activeProductsQuery);
-    const currentActiveProductsCount = activeProductsSnapshot.size;
-
-    // Determine Top Selling Product
     let currentTopSellingProduct: { name: string; quantity: number } | null = null;
     if (Object.keys(productSalesCount).length > 0) {
       let maxQuantity = 0;
@@ -57,7 +45,6 @@ export async function getDashboardMetrics(): Promise<{
           topProductId = productId;
         }
       }
-
       if (topProductId) {
         const productRef = doc(firestoreDb, 'products', topProductId);
         const productDoc = await getDoc(productRef);
@@ -72,24 +59,51 @@ export async function getDashboardMetrics(): Promise<{
       }
     }
 
-    // Fetch Recent Sales
-    const recentSalesQuery = query(
-      collection(firestoreDb, 'sales'),
-      orderBy('saleDate', 'desc'),
-      limit(5)
-    );
-    const recentSalesSnapshot = await getDocs(recentSalesQuery);
-    const currentRecentSales: RecentSaleForDashboard[] = recentSalesSnapshot.docs.map(docSnap => {
-      const data = docSnap.data() as Omit<Sale, 'id' | 'saleDate'> & { saleDate: Timestamp };
-      return {
-        id: docSnap.id,
-        saleDate: data.saleDate.toDate().toISOString(),
-        totalAmount: data.totalAmount,
-        itemCount: data.items.reduce((sum, item) => sum + item.quantity, 0),
-      };
+    // --- Other Income Total ---
+    const otherIncomesCollectionRef = collection(firestoreDb, 'otherIncomes');
+    const otherIncomesSnapshot = await getDocs(otherIncomesCollectionRef);
+    let currentOtherIncomeTotal = 0;
+    otherIncomesSnapshot.forEach(doc => {
+      currentOtherIncomeTotal += doc.data().amount || 0;
     });
 
-    // Fetch Low Stock Items
+    // --- Active Products Count ---
+    const activeProductsQuery = query(collection(firestoreDb, 'products'), where("stock", ">", 0));
+    const activeProductsSnapshot = await getDocs(activeProductsQuery);
+    const currentActiveProductsCount = activeProductsSnapshot.size;
+
+    // --- Recent Sales for Chart (Last 7 Days) ---
+    const today = new Date();
+    const sevenDaysAgo = subDays(today, 6); // Inclusive of today, so 6 days back + today = 7 days
+    
+    const last7DaysInterval = eachDayOfInterval({ start: sevenDaysAgo, end: today });
+    const dailySalesMap: { [key: string]: number } = {};
+
+    last7DaysInterval.forEach(day => {
+      dailySalesMap[format(day, 'yyyy-MM-dd')] = 0;
+    });
+    
+    // Filter salesData for the last 7 days client-side as Firestore range queries on timestamps can be tricky across all scenarios
+    // Or, if salesData is very large, query Firestore directly with a date range
+    const salesInLast7Days = salesData.filter(sale => {
+        const saleDate = sale.saleDate.toDate();
+        return saleDate >= startOfDay(sevenDaysAgo) && saleDate <= endOfDay(today);
+    });
+
+    salesInLast7Days.forEach(sale => {
+      const saleDayStr = format(sale.saleDate.toDate(), 'yyyy-MM-dd');
+      if (dailySalesMap.hasOwnProperty(saleDayStr)) {
+        dailySalesMap[saleDayStr] += sale.totalAmount;
+      }
+    });
+
+    const currentRecentSalesChartData: DailySalesData[] = last7DaysInterval.map(day => ({
+      date: format(day, 'EEE'), // Short day name e.g., "Mon"
+      total: dailySalesMap[format(day, 'yyyy-MM-dd')] || 0,
+    }));
+
+
+    // --- Low Stock Items ---
     const lowStockQuery = query(
       collection(firestoreDb, 'products'),
       where('stock', '>', 0),
@@ -113,7 +127,7 @@ export async function getDashboardMetrics(): Promise<{
       otherIncomeTotal: currentOtherIncomeTotal,
       activeProductsCount: currentActiveProductsCount,
       topSellingProduct: currentTopSellingProduct,
-      recentSales: currentRecentSales,
+      recentSales: currentRecentSalesChartData,
       lowStockItems: currentLowStockItems,
     };
 

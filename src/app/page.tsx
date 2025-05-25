@@ -4,15 +4,18 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { PageTitle } from "@/components/shared/page-title";
-import { DollarSign, TrendingUp, Coffee, BarChart3, Archive, ShoppingBag, ExternalLink } from "lucide-react";
-import type { MetricCardProps, RecentSaleForDashboard, LowStockItemForDashboard } from "@/lib/types";
+import { DollarSign, TrendingUp, Coffee, BarChart3, Archive, ExternalLink } from "lucide-react";
+import type { MetricCardProps, DailySalesData, LowStockItemForDashboard } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { getDashboardMetrics } from "./dashboard/actions";
-import { format } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { format } from 'date-fns';
+
 
 const initialMetrics: MetricCardProps[] = [
   { title: "Total Sales", value: "$0", icon: DollarSign, description: "Sum of all completed sales" },
@@ -28,9 +31,16 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 0,
 });
 
+const chartConfig = {
+  sales: {
+    label: "Sales",
+    color: "hsl(var(--chart-1))",
+  },
+} satisfies ChartConfig;
+
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<MetricCardProps[]>(initialMetrics);
-  const [recentSales, setRecentSales] = useState<RecentSaleForDashboard[]>([]);
+  const [recentSales, setRecentSales] = useState<DailySalesData[]>([]);
   const [lowStockItems, setLowStockItems] = useState<LowStockItemForDashboard[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -74,7 +84,6 @@ export default function DashboardPage() {
           description: result.error,
           variant: "destructive",
         });
-        // Reset to initial/empty on error to clear potentially stale data
         setMetrics(initialMetrics.map(im => ({...im}))); 
         setRecentSales([]);
         setLowStockItems([]);
@@ -87,7 +96,6 @@ export default function DashboardPage() {
 
   const isLoadingMetric = (metricTitle: string, currentValue: string | number) => {
     if (!loading) return false; 
-    // Check if current value is still the placeholder for that metric
     const initialValueForMetric = initialMetrics.find(m => m.title === metricTitle)?.value;
     return currentValue === initialValueForMetric;
   };
@@ -134,28 +142,59 @@ export default function DashboardPage() {
       <div className="mt-8 grid gap-6 md:grid-cols-2">
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><ShoppingBag className="h-5 w-5 text-primary" />Recent Sales</CardTitle>
-            <CardDescription>Last 5 sales transactions.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" />Recent Sales (Last 7 Days)</CardTitle>
+            <CardDescription>Total sales amount per day for the past week.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-[300px] pt-4">
             {loading && recentSales.length === 0 ? ( 
-              <div className="space-y-3">
-                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+              <Skeleton className="h-full w-full" />
+            ) : !loading && recentSales.every(sale => sale.total === 0) ? (
+              <div className="flex items-center justify-center h-full">
+                 <p className="text-muted-foreground text-center">No sales activity in the last 7 days.</p>
               </div>
             ) : recentSales.length > 0 ? (
-              <ul className="space-y-2">
-                {recentSales.map(sale => (
-                  <li key={sale.id} className="flex justify-between items-center text-sm p-2 rounded-md hover:bg-muted/50 transition-colors">
-                    <div>
-                      <p className="font-medium">{format(new Date(sale.saleDate), "MMM d, yyyy - p")}</p>
-                      <p className="text-xs text-muted-foreground">{sale.itemCount} item(s)</p>
-                    </div>
-                    <p className="font-semibold text-green-600">{currencyFormatter.format(sale.totalAmount)}</p>
-                  </li>
-                ))}
-              </ul>
+              <ChartContainer config={chartConfig} className="h-full w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={recentSales} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis 
+                            dataKey="date" 
+                            tickLine={false} 
+                            axisLine={false} 
+                            tickMargin={8}
+                            fontSize={12}
+                        />
+                        <YAxis 
+                            tickLine={false} 
+                            axisLine={false} 
+                            tickMargin={8}
+                            fontSize={12}
+                            tickFormatter={(value) => `$${value / 1000}k`} // Example: format as thousands
+                        />
+                        <ChartTooltip
+                            cursor={false}
+                            content={
+                                <ChartTooltipContent 
+                                    formatter={(value, name) => (
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">{currencyFormatter.format(Number(value))}</span>
+                                            {/* <span className="text-muted-foreground text-xs">
+                                                {name === 'total' && `on ${payload && payload[0] && payload[0].payload.dateLong }`}
+                                            </span> */}
+                                        </div>
+                                    )}
+                                    indicator="dot" 
+                                />
+                            }
+                        />
+                        <Bar dataKey="total" fill="var(--color-sales)" radius={4} />
+                    </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             ) : (
-              <p className="text-muted-foreground text-center py-4">No recent sales activity.</p>
+               <div className="flex items-center justify-center h-full">
+                <p className="text-muted-foreground text-center">Could not load sales data.</p>
+               </div>
             )}
           </CardContent>
         </Card>
@@ -198,4 +237,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

@@ -49,11 +49,10 @@ export interface MetricCardProps {
   description?: string;
 }
 
-export interface RecentSaleForDashboard {
-  id: string;
-  saleDate: string; // ISO string
-  totalAmount: number;
-  itemCount: number;
+// Changed from RecentSaleForDashboard to DailySalesData for the chart
+export interface DailySalesData {
+  date: string; // Formatted date string for chart label (e.g., "Mon", "Jul 20")
+  total: number; // Total sales for that day
 }
 
 export interface LowStockItemForDashboard {
