@@ -1,7 +1,6 @@
 
-export type ProductCategory = "Bolsa de Café" | "Aji";
-
-export const productCategories: ProductCategory[] = ["Bolsa de Café", "Aji"];
+export type ProductCategory = "Drinks" | "Food" | "Merchandise";
+export const productCategories: ProductCategory[] = ["Drinks", "Food", "Merchandise"];
 
 export interface Product {
   id: string;
@@ -42,6 +41,18 @@ export interface OtherIncome {
   incomeDate: string; // Store as ISO string or Firestore Timestamp
 }
 
+export type ExpenseCategory = "Supplies" | "Utilities" | "Rent" | "Marketing" | "Wages" | "Other";
+export const expenseCategories: ExpenseCategory[] = ["Supplies", "Utilities", "Rent", "Marketing", "Wages", "Other"];
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  category: ExpenseCategory;
+  expenseDate: string; // Store as ISO string or Firestore Timestamp
+}
+
+
 export interface MetricCardProps {
   title: string;
   value: string | number;
@@ -49,9 +60,8 @@ export interface MetricCardProps {
   description?: string;
 }
 
-// Changed from RecentSaleForDashboard to DailySalesData for the chart
 export interface DailySalesData {
-  date: string; // Formatted date string for chart label (e.g., "Mon", "Jul 20")
+  date: string; // Formatted date string for chart label (e.g., "Jul 20")
   total: number; // Total sales for that day
 }
 

@@ -4,10 +4,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import React from "react"; // Import React for useState and useEffect
+import React from "react";
 import {
   Sidebar,
-  SidebarHeader as UiSidebarHeader, // Renamed to avoid conflict
+  SidebarHeader as UiSidebarHeader,
   SidebarContent,
   SidebarFooter,
   SidebarMenu,
@@ -15,7 +15,7 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
   SidebarInset,
-  useSidebar, // Import useSidebar
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -27,8 +27,9 @@ import {
   Archive,
   Settings,
   Menu,
-  Landmark, // Changed from DollarSign for Other Income
+  Landmark,
   LogOut,
+  Receipt, // Added Receipt icon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -56,9 +57,9 @@ const navItems: NavItem[] = [
   { href: "/sales", icon: ShoppingCart, label: "Sales", tooltip: "Record Sales" },
   { href: "/inventory", icon: Archive, label: "Inventory", tooltip: "Adjust Inventory" },
   { href: "/income", icon: Landmark, label: "Other Income", tooltip: "Track Other Income" },
+  { href: "/expenses", icon: Receipt, label: "Expenses", tooltip: "Track Expenses" }, // New expense item
 ];
 
-// This component remains the same as it's already designed to consume context correctly
 function AppSpecificSidebarHeader() {
   const { isMobile } = useSidebar();
   const [mounted, setMounted] = React.useState(false);
@@ -83,7 +84,6 @@ function AppSpecificSidebarHeader() {
   );
 }
 
-// Inner component that contains the main layout and consumes sidebar context
 function AppShellInternal({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
@@ -157,16 +157,12 @@ function AppShellInternal({ children }: { children: ReactNode }) {
           </DropdownMenu>
         </SidebarFooter>
       </Sidebar>
-      {/* SidebarInset is a <main> HTML tag. It uses flex-1 to take available width.
-          It's also a flex-col to stack its children (header and content div). */}
       <SidebarInset className="flex flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 px-6 backdrop-blur-md md:justify-end">
-           <SidebarTrigger className="md:hidden"> {/* SidebarTrigger also uses useSidebar */}
+           <SidebarTrigger className="md:hidden">
               <Menu className="h-6 w-6" />
            </SidebarTrigger>
         </header>
-        {/* This div now wraps the page children, takes remaining vertical space, and handles scrolling.
-            Pages will add their own padding (e.g., p-6) to this container's children. */}
         <div className="flex-1 overflow-y-auto">
           {children}
         </div>
@@ -175,8 +171,7 @@ function AppShellInternal({ children }: { children: ReactNode }) {
   );
 }
 
-// AppShell is now a wrapper that renders AppShellInternal.
-// It does not call useSidebar() directly.
 export function AppShell({ children }: { children: ReactNode }) {
+  // AppShell doesn't call useSidebar directly. AppShellInternal does.
   return <AppShellInternal>{children}</AppShellInternal>;
 }
