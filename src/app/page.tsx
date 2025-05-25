@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { PageTitle } from "@/components/shared/page-title";
-import { DollarSign, TrendingUp, Coffee, BarChart3, Archive, ExternalLink, Scale, CreditCard, ListChecks, BadgeDollarSign } from "lucide-react";
+import { DollarSign, TrendingUp, Coffee, BarChart3, Archive, ExternalLink, Scale, CreditCard, ListChecks, BadgeDollarSign, TrendingDown } from "lucide-react";
 import type { MetricCardProps, DailySalesData, LowStockItemForDashboard } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +19,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 
 const initialMetrics: MetricCardProps[] = [
   { title: "Ventas Totales", value: "$0", icon: DollarSign, description: "Suma de todas las ventas completadas" },
   { title: "Ventas (Últimos 30 Días)", value: "$0", icon: TrendingUp, description: "Suma de ventas en los últimos 30 días" },
+  { title: "Gastos Totales", value: "$0", icon: TrendingDown, description: "Suma de todos los gastos registrados" },
   { title: "Gastos (Últimos 30 Días)", value: "$0", icon: CreditCard, description: "Suma de gastos en los últimos 30 días" },
   { title: "Balance", value: "$0", icon: Scale, description: "(Ventas + Otros Ingresos) - Gastos (Histórico)" },
   { title: "Transacciones (Últimos 30 Días)", value: "0", icon: ListChecks, description: "Número total de ventas individuales" },
@@ -62,6 +63,9 @@ export default function DashboardPage() {
             if (metric.title === "Ventas (Últimos 30 Días)" && result.salesLast30Days !== undefined) {
               return { ...metric, value: currencyFormatter.format(result.salesLast30Days) };
             }
+            if (metric.title === "Gastos Totales" && result.totalExpenses !== undefined) {
+              return { ...metric, value: currencyFormatter.format(result.totalExpenses) };
+            }
             if (metric.title === "Gastos (Últimos 30 Días)" && result.expensesLast30Days !== undefined) {
               return { ...metric, value: currencyFormatter.format(result.expensesLast30Days) };
             }
@@ -99,7 +103,6 @@ export default function DashboardPage() {
           description: result.error,
           variant: "destructive",
         });
-        // Reset metrics to initial to clear potentially stale data on error
         setMetrics(initialMetrics.map(im => ({...im, value: im.title.includes("0") || im.title.includes("N/A") ? im.value : (im.value.toString().startsWith("$") ? "$0" : "0") }))); 
         setRecentSales([]);
         setLowStockItems([]);
@@ -120,7 +123,7 @@ export default function DashboardPage() {
   return (
     <div className="p-6">
       <PageTitle title="Dashboard" />
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"> 
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3"> 
         {metrics.map((metric) => (
           <Card key={metric.title} className="shadow-md hover:shadow-lg transition-shadow duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

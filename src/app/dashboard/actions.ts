@@ -3,7 +3,7 @@
 
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, doc, getDoc, type Timestamp, limit, orderBy } from "firebase/firestore";
-import type { Sale, Product, DailySalesData, LowStockItemForDashboard, Expense } from "@/lib/types";
+import type { Sale, Product, DailySalesData, LowStockItemForDashboard, Expense, OtherIncome } from "@/lib/types";
 import { format, subDays, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -11,6 +11,7 @@ export async function getDashboardMetrics(): Promise<{
   success: boolean;
   totalSales?: number; // All time
   totalExpenses?: number; // All time
+  totalOtherIncome?: number; // All time
   balance?: number;
   salesLast30Days?: number; // Sum of sales in the last 30 days
   topSellingProduct?: { name: string; quantity: number } | null;
@@ -73,7 +74,7 @@ export async function getDashboardMetrics(): Promise<{
     const otherIncomesSnapshot = await getDocs(otherIncomesCollectionRef);
     let currentOtherIncomeTotal = 0;
     otherIncomesSnapshot.forEach(docSnap => {
-      currentOtherIncomeTotal += docSnap.data().amount || 0;
+      currentOtherIncomeTotal += (docSnap.data() as OtherIncome).amount || 0;
     });
 
     // --- Total Expenses (All Time) & Expenses (Last 30 Days) ---
@@ -148,6 +149,7 @@ export async function getDashboardMetrics(): Promise<{
       success: true,
       totalSales: currentTotalSales,
       totalExpenses: currentTotalExpenses,
+      totalOtherIncome: currentOtherIncomeTotal,
       balance: currentBalance,
       salesLast30Days: salesLast30DaysTotal,
       activeProductsCount: currentActiveProductsCount,
