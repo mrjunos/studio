@@ -173,53 +173,51 @@ export default function SalesPage() {
   return (
     <div className="p-6 space-y-6">
       <PageTitle title="Sales Registration" />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 shadow-md">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="shadow-md">
           <CardHeader>
             <CardTitle>Add Products to Sale</CardTitle>
             <CardDescription>Select products and quantities to add to the current sale.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-              <div>
-                <Label htmlFor="product">Product</Label>
-                {isLoadingProducts ? <Loader2 className="h-5 w-5 animate-spin mt-2" /> : (
-                  <Select value={selectedProductId} onValueChange={setSelectedProductId} disabled={isPending}>
-                    <SelectTrigger id="product">
-                      <SelectValue placeholder="Select a product" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products.map(product => (
-                        <SelectItem key={product.id} value={product.id} disabled={product.stock === 0}>
-                          {product.name} (Stock: {product.stock}) - ${product.price.toFixed(2)}
-                        </SelectItem>
-                      ))}
-                       {products.length === 0 && !isLoadingProducts && (
-                        <SelectItem value="no-products" disabled>No products available or in stock.</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="quantity">Quantity</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  value={quantity}
-                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                  min="1"
-                  disabled={isPending || isLoadingProducts}
-                />
-              </div>
+            <div>
+              <Label htmlFor="product">Product</Label>
+              {isLoadingProducts ? <Loader2 className="h-5 w-5 animate-spin mt-2" /> : (
+                <Select value={selectedProductId} onValueChange={setSelectedProductId} disabled={isPending}>
+                  <SelectTrigger id="product">
+                    <SelectValue placeholder="Select a product" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map(product => (
+                      <SelectItem key={product.id} value={product.id} disabled={product.stock === 0}>
+                        {product.name} (Stock: {product.stock}) - ${product.price.toFixed(2)}
+                      </SelectItem>
+                    ))}
+                      {products.length === 0 && !isLoadingProducts && (
+                      <SelectItem value="no-products" disabled>No products available or in stock.</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
-            <Button onClick={handleAddToCart} disabled={isPending || isLoadingProducts || !selectedProductId || quantity <= 0} className="w-full sm:w-auto">
+            <div>
+              <Label htmlFor="quantity">Quantity</Label>
+              <Input
+                id="quantity"
+                type="number"
+                value={quantity}
+                onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                min="1"
+                disabled={isPending || isLoadingProducts}
+              />
+            </div>
+            <Button onClick={handleAddToCart} disabled={isPending || isLoadingProducts || !selectedProductId || quantity <= 0} className="w-full">
               <PlusCircle className="mr-2 h-4 w-4" /> Add to Cart
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-1 shadow-md">
+        <Card className="shadow-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5 text-primary" /> Current Sale
