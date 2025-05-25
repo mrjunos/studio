@@ -14,7 +14,6 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
-import { format } from 'date-fns';
 
 
 const initialMetrics: MetricCardProps[] = [
@@ -84,6 +83,7 @@ export default function DashboardPage() {
           description: result.error,
           variant: "destructive",
         });
+        // Reset to initial values on error to ensure UI consistency
         setMetrics(initialMetrics.map(im => ({...im}))); 
         setRecentSales([]);
         setLowStockItems([]);
@@ -96,6 +96,7 @@ export default function DashboardPage() {
 
   const isLoadingMetric = (metricTitle: string, currentValue: string | number) => {
     if (!loading) return false; 
+    // Check if the current value is still the initial placeholder value for that metric
     const initialValueForMetric = initialMetrics.find(m => m.title === metricTitle)?.value;
     return currentValue === initialValueForMetric;
   };
@@ -142,15 +143,15 @@ export default function DashboardPage() {
       <div className="mt-8 grid gap-6 md:grid-cols-2">
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" />Recent Sales (Last 7 Days)</CardTitle>
-            <CardDescription>Total sales amount per day for the past week.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" />Recent Sales (Last 30 Days)</CardTitle>
+            <CardDescription>Total sales amount per day for the past 30 days.</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px] pt-4">
             {loading && recentSales.length === 0 ? ( 
               <Skeleton className="h-full w-full" />
             ) : !loading && recentSales.every(sale => sale.total === 0) ? (
               <div className="flex items-center justify-center h-full">
-                 <p className="text-muted-foreground text-center">No sales activity in the last 7 days.</p>
+                 <p className="text-muted-foreground text-center">No sales activity in the last 30 days.</p>
               </div>
             ) : recentSales.length > 0 ? (
               <ChartContainer config={chartConfig} className="h-full w-full">
@@ -163,24 +164,23 @@ export default function DashboardPage() {
                             axisLine={false} 
                             tickMargin={8}
                             fontSize={12}
+                            // interval={4} // Show a tick every ~5 days for 30 days, or adjust as needed
                         />
                         <YAxis 
                             tickLine={false} 
                             axisLine={false} 
                             tickMargin={8}
                             fontSize={12}
-                            tickFormatter={(value) => `$${value / 1000}k`} // Example: format as thousands
+                            tickFormatter={(value) => `$${value / 1000}k`} 
                         />
                         <ChartTooltip
                             cursor={false}
                             content={
                                 <ChartTooltipContent 
-                                    formatter={(value, name) => (
+                                    formatter={(value, name, props) => (
                                         <div className="flex flex-col">
                                             <span className="font-medium">{currencyFormatter.format(Number(value))}</span>
-                                            {/* <span className="text-muted-foreground text-xs">
-                                                {name === 'total' && `on ${payload && payload[0] && payload[0].payload.dateLong }`}
-                                            </span> */}
+                                            {props.payload.date && (<span className="text-muted-foreground text-xs">on {props.payload.date}</span>)}
                                         </div>
                                     )}
                                     indicator="dot" 

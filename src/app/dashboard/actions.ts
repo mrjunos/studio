@@ -24,11 +24,11 @@ export async function getDashboardMetrics(): Promise<{
     const allSalesSnapshot = await getDocs(salesCollectionRef);
     let currentTotalSales = 0;
     const productSalesCount: { [productId: string]: number } = {};
-    const salesData: Array<Omit<Sale, 'id' | 'saleDate'> & { saleDate: Timestamp }> = [];
+    const salesDataForMetrics: Array<Omit<Sale, 'id' | 'saleDate'> & { saleDate: Timestamp }> = [];
 
     allSalesSnapshot.forEach(doc => {
       const saleData = doc.data() as Omit<Sale, 'id' | 'saleDate'> & { saleDate: Timestamp };
-      salesData.push(saleData);
+      salesDataForMetrics.push(saleData);
       currentTotalSales += saleData.totalAmount || 0;
       saleData.items.forEach(item => {
         productSalesCount[item.productId] = (productSalesCount[item.productId] || 0) + item.quantity;
@@ -72,33 +72,31 @@ export async function getDashboardMetrics(): Promise<{
     const activeProductsSnapshot = await getDocs(activeProductsQuery);
     const currentActiveProductsCount = activeProductsSnapshot.size;
 
-    // --- Recent Sales for Chart (Last 7 Days) ---
+    // --- Recent Sales for Chart (Last 30 Days) ---
     const today = new Date();
-    const sevenDaysAgo = subDays(today, 6); // Inclusive of today, so 6 days back + today = 7 days
+    const thirtyDaysAgo = subDays(today, 29); // Inclusive of today, so 29 days back + today = 30 days
     
-    const last7DaysInterval = eachDayOfInterval({ start: sevenDaysAgo, end: today });
+    const last30DaysInterval = eachDayOfInterval({ start: thirtyDaysAgo, end: today });
     const dailySalesMap: { [key: string]: number } = {};
 
-    last7DaysInterval.forEach(day => {
+    last30DaysInterval.forEach(day => {
       dailySalesMap[format(day, 'yyyy-MM-dd')] = 0;
     });
     
-    // Filter salesData for the last 7 days client-side as Firestore range queries on timestamps can be tricky across all scenarios
-    // Or, if salesData is very large, query Firestore directly with a date range
-    const salesInLast7Days = salesData.filter(sale => {
+    const salesInLast30Days = salesDataForMetrics.filter(sale => {
         const saleDate = sale.saleDate.toDate();
-        return saleDate >= startOfDay(sevenDaysAgo) && saleDate <= endOfDay(today);
+        return saleDate >= startOfDay(thirtyDaysAgo) && saleDate <= endOfDay(today);
     });
 
-    salesInLast7Days.forEach(sale => {
+    salesInLast30Days.forEach(sale => {
       const saleDayStr = format(sale.saleDate.toDate(), 'yyyy-MM-dd');
       if (dailySalesMap.hasOwnProperty(saleDayStr)) {
         dailySalesMap[saleDayStr] += sale.totalAmount;
       }
     });
 
-    const currentRecentSalesChartData: DailySalesData[] = last7DaysInterval.map(day => ({
-      date: format(day, 'EEE'), // Short day name e.g., "Mon"
+    const currentRecentSalesChartData: DailySalesData[] = last30DaysInterval.map(day => ({
+      date: format(day, 'MMM d'), // Format as "Jul 21"
       total: dailySalesMap[format(day, 'yyyy-MM-dd')] || 0,
     }));
 
