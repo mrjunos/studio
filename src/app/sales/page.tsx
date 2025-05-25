@@ -9,15 +9,21 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, XCircle, ShoppingCart, Loader2 } from "lucide-react";
-import type { Product } from "@/lib/types";
+import { PlusCircle, XCircle, ShoppingCart, Loader2, History } from "lucide-react";
+import type { Product, Sale } from "@/lib/types";
 import { getProducts } from "@/app/products/actions";
 import { useToast } from "@/hooks/use-toast";
-import { processSale, type CartItemForAction } from "./actions";
+import { processSale, getSales, type CartItemForAction } from "./actions";
+import { format } from "date-fns";
 
 interface CartItemClient extends CartItemForAction {
   // productName and productPrice are already in CartItemForAction via SaleItem
 }
+
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+});
 
 export default function SalesPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -25,22 +31,32 @@ export default function SalesPage() {
   const [quantity, setQuantity] = useState<number>(1);
   const [cart, setCart] = useState<CartItemClient[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+
+  const [salesHistory, setSalesHistory] = useState<Sale[]>([]);
+  const [isLoadingSalesHistory, setIsLoadingSalesHistory] = useState(true);
+
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const fetchProductsData = async () => {
+  const fetchPageData = async () => {
     setIsLoadingProducts(true);
+    setIsLoadingSalesHistory(true);
     try {
-      const fetchedProducts = await getProducts();
-      setProducts(fetchedProducts); // Show all products, stock check happens on add/process
+      const [fetchedProducts, fetchedSales] = await Promise.all([
+        getProducts(),
+        getSales()
+      ]);
+      setProducts(fetchedProducts.filter(p => p.stock > 0)); // Only show products with stock for selection
+      setSalesHistory(fetchedSales);
     } catch (error: any) {
-      toast({ title: "Error Loading Products", description: error.message || "Could not load products.", variant: "destructive" });
+      toast({ title: "Error Loading Page Data", description: error.message || "Could not load data.", variant: "destructive" });
     }
     setIsLoadingProducts(false);
+    setIsLoadingSalesHistory(false);
   };
 
   useEffect(() => {
-    fetchProductsData();
+    fetchPageData();
   }, []);
 
   const handleAddToCart = () => {
@@ -51,10 +67,17 @@ export default function SalesPage() {
 
     const product = products.find(p => p.id === selectedProductId);
     if (!product) {
-      toast({ title: "Product Not Found", variant: "destructive" });
-      return;
+      // This might happen if product list was filtered after selection, re-fetch for fresh data
+      const originalProduct = products.concat(salesHistory.flatMap(s => s.items.map(i => ({...i, id: i.productId, category: 'Food', stock: 0, imageUrl: ''} as Product)))).find(p => p.id === selectedProductId);
+      if (!originalProduct) {
+        toast({ title: "Product Not Found", description: "The selected product is no longer available or valid.", variant: "destructive" });
+        return;
+      }
+       toast({ title: "Product Issue", description: `${originalProduct.name} might be out of stock or data is stale. Refreshing products.`, variant: "destructive" });
+       fetchPageData(); // Attempt to refresh data
+       return;
     }
-    
+
     if (product.stock <= 0) {
         toast({ title: "Out of Stock", description: `${product.name} is currently out of stock.`, variant: "destructive"});
         return;
@@ -75,14 +98,14 @@ export default function SalesPage() {
       updatedCart[existingCartItemIndex].quantity = newQuantity;
       setCart(updatedCart);
     } else {
-      setCart([...cart, { 
-        productId: product.id, 
+      setCart([...cart, {
+        productId: product.id,
         productName: product.name,
-        quantity, 
-        priceAtSale: product.price, 
+        quantity,
+        priceAtSale: product.price,
       }]);
     }
-    
+
     setSelectedProductId("");
     setQuantity(1);
     toast({ title: "Item Added", description: `${product.name} (x${quantity}) added to cart.` });
@@ -92,14 +115,15 @@ export default function SalesPage() {
     setCart(cart.filter(item => item.productId !== productId));
     toast({ title: "Item Removed", description: `Item removed from cart.` });
   };
-  
+
   const handleUpdateQuantity = (productId: string, newQuantityStr: string) => {
     const newQuantity = parseInt(newQuantityStr);
-    const product = products.find(p => p.id === productId); // Find original product for stock info
-    if (!product) return;
+    // Find product from original list, not filtered one, to check true stock
+    const product = products.find(p => p.id === productId) || salesHistory.flatMap(s => s.items.map(i => ({...i, id: i.productId, category: 'Food', stock: 0, imageUrl: ''} as Product))).find(p => p.id === productId);
+
+    if (!product) return; // Should not happen if product was in cart
 
     if (isNaN(newQuantity) || newQuantity <= 0) {
-      // If input is cleared or invalid, remove item or set to 1. For simplicity, remove.
       handleRemoveFromCart(productId);
       return;
     }
@@ -120,7 +144,7 @@ export default function SalesPage() {
       toast({ title: "Empty Cart", description: "Please add items to the cart before processing sale.", variant: "destructive" });
       return;
     }
-    
+
     const itemsForAction: CartItemForAction[] = cart.map(item => ({
         productId: item.productId,
         productName: item.productName,
@@ -132,24 +156,22 @@ export default function SalesPage() {
     startTransition(async () => {
         const result = await processSale(itemsForAction, total);
         if (result.success) {
-            toast({ title: "Sale Processed!", description: `Sale ID: ${result.saleId}. Total: $${total.toFixed(2)}. Inventory updated.` });
-            setCart([]); 
-            fetchProductsData(); // Re-fetch products to update stock display
+            toast({ title: "Sale Processed!", description: `Sale ID: ${result.saleId}. Total: ${currencyFormatter.format(total)}. Inventory updated.` });
+            setCart([]);
+            fetchPageData(); // Re-fetch products and sales history
         } else {
             let errorDesc = result.error || "Failed to process sale.";
             if (result.unavailableItems && result.unavailableItems.length > 0) {
                 errorDesc += " Unavailable: " + result.unavailableItems.map(i => `${i.name} (only ${i.availableStock} left)`).join(', ');
             }
             toast({ title: "Sale Failed", description: errorDesc, variant: "destructive" });
-            // Potentially update cart quantities if only some items were problematic
-            // or re-fetch products to show current stock on items that failed
-            fetchProductsData(); 
+            fetchPageData(); // Re-fetch to show current stock/status
         }
     });
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-6">
       <PageTitle title="Sales Registration" />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 shadow-md">
@@ -172,18 +194,21 @@ export default function SalesPage() {
                           {product.name} (Stock: {product.stock}) - ${product.price.toFixed(2)}
                         </SelectItem>
                       ))}
+                       {products.length === 0 && !isLoadingProducts && (
+                        <SelectItem value="no-products" disabled>No products available or in stock.</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 )}
               </div>
               <div>
                 <Label htmlFor="quantity">Quantity</Label>
-                <Input 
-                  id="quantity" 
-                  type="number" 
-                  value={quantity} 
-                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)} 
-                  min="1" 
+                <Input
+                  id="quantity"
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                  min="1"
                   disabled={isPending || isLoadingProducts}
                 />
               </div>
@@ -219,9 +244,9 @@ export default function SalesPage() {
                     <TableRow key={item.productId}>
                       <TableCell className="font-medium">{item.productName}</TableCell>
                       <TableCell className="text-center w-20">
-                        <Input 
-                          type="number" 
-                          value={item.quantity} 
+                        <Input
+                          type="number"
+                          value={item.quantity}
                           onChange={(e) => handleUpdateQuantity(item.productId, e.target.value)}
                           min="1"
                           className="h-8 text-center"
@@ -244,7 +269,7 @@ export default function SalesPage() {
             <CardFooter className="flex flex-col gap-2 pt-4 border-t">
               <div className="flex justify-between w-full text-lg font-semibold">
                 <span>Total:</span>
-                <span className="text-primary">${calculateTotal().toFixed(2)}</span>
+                <span className="text-primary">{currencyFormatter.format(calculateTotal())}</span>
               </div>
               <Button onClick={handleProcessSale} className="w-full mt-2" disabled={isPending || isLoadingProducts}>
                 {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
@@ -254,6 +279,49 @@ export default function SalesPage() {
           )}
         </Card>
       </div>
+
+      <Card className="shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5 text-primary" /> Sales History
+          </CardTitle>
+          <CardDescription>A log of all completed sales.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingSalesHistory ? (
+            <div className="flex justify-center items-center h-40">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : salesHistory.length === 0 ? (
+            <p className="text-muted-foreground text-center py-4">No sales recorded yet.</p>
+          ) : (
+            <div className="rounded-lg border shadow-sm overflow-hidden max-h-96 overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-center">Items Sold</TableHead>
+                    <TableHead className="text-right">Total Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {salesHistory.map((sale) => (
+                    <TableRow key={sale.id}>
+                      <TableCell>{format(new Date(sale.saleDate), "PPp")}</TableCell>
+                      <TableCell className="text-center">
+                        {sale.items.reduce((sum, item) => sum + item.quantity, 0)}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-green-600">
+                        {currencyFormatter.format(sale.totalAmount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

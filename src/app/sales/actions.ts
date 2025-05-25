@@ -3,8 +3,8 @@
 
 import { z } from "zod";
 import type { Sale, SaleItem, Product } from "@/lib/types";
-import { db } from "@/lib/firebase";
-import { collection, addDoc, doc, getDoc, writeBatch, Timestamp, increment } from "firebase/firestore";
+import { getDb } from "@/lib/firebase"; // Use getDb
+import { collection, addDoc, doc, getDoc, writeBatch, Timestamp, increment, getDocs, query, orderBy } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
 
 const SaleItemSchema = z.object({
@@ -21,20 +21,49 @@ const ProcessSaleInputSchema = z.object({
 
 export type CartItemForAction = z.infer<typeof SaleItemSchema>;
 
+// Helper to convert Firestore Timestamps to ISO strings for dates
+const convertSaleTimestampsToISO = (data: any): any => {
+  if (data && data.saleDate instanceof Timestamp) {
+    return { ...data, saleDate: data.saleDate.toDate().toISOString() };
+  }
+  return data;
+};
+
+export async function getSales(): Promise<Sale[]> {
+  try {
+    const db = getDb();
+    const salesCollection = collection(db, 'sales');
+    const q = query(salesCollection, orderBy("saleDate", "desc"));
+    const salesSnapshot = await getDocs(q);
+    const salesList = salesSnapshot.docs.map(doc => {
+      const data = doc.data();
+      // Calculate total items for display if needed, or do it client-side
+      // const totalItems = data.items.reduce((sum, item) => sum + item.quantity, 0);
+      return convertSaleTimestampsToISO({ id: doc.id, ...data }) as Sale;
+    });
+    return salesList;
+  } catch (error: any) {
+    console.error("Error fetching sales:", error);
+    throw new Error(`Failed to fetch sales history. ${error.code === 'permission-denied' ? 'Firestore permission denied.' : ''}`);
+  }
+}
+
+
 export async function processSale(
-  cartItems: CartItemForAction[], 
+  cartItems: CartItemForAction[],
   totalAmount: number
 ): Promise<{ success: boolean; saleId?: string; error?: string; unavailableItems?: {productId: string, name: string, availableStock: number}[] }> {
-  
+
   const validation = ProcessSaleInputSchema.safeParse({ items: cartItems, totalAmount });
   if (!validation.success) {
     return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
   }
 
-  const batch = writeBatch(db);
-  const unavailableItems: {productId: string, name: string, availableStock: number}[] = [];
-
   try {
+    const db = getDb();
+    const batch = writeBatch(db);
+    const unavailableItems: {productId: string, name: string, availableStock: number}[] = [];
+
     // Validate stock and prepare batch updates for products
     for (const item of cartItems) {
       const productRef = doc(db, 'products', item.productId);
@@ -43,7 +72,7 @@ export async function processSale(
       if (!productDoc.exists()) {
         return { success: false, error: `Product ${item.productName} not found.` };
       }
-      const productData = productDoc.data() as Product;
+      const productData = productDoc.data() as Product; // Assuming Product type includes stock
       if (productData.stock < item.quantity) {
         unavailableItems.push({ productId: item.productId, name: item.productName, availableStock: productData.stock });
       }
@@ -68,7 +97,7 @@ export async function processSale(
     await batch.commit();
 
     revalidatePath('/products'); // To reflect updated stock
-    // revalidatePath('/sales'); // If there was a sales history page
+    revalidatePath('/sales'); // To reflect new sale in history
 
     return { success: true, saleId: newSaleRef.id };
 
