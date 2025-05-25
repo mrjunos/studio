@@ -9,12 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, XCircle, ShoppingCart, Loader2, History } from "lucide-react";
+import { PlusCircle, XCircle, ShoppingCart, Loader2, History, Calendar as CalendarIcon } from "lucide-react";
 import type { Product, Sale } from "@/lib/types";
 import { getProducts } from "@/app/products/actions";
 import { useToast } from "@/hooks/use-toast";
 import { processSale, getSales, type CartItemForAction } from "./actions";
 import { format } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 interface CartItemClient extends CartItemForAction {
   // productName and productPrice are already in CartItemForAction via SaleItem
@@ -33,6 +36,7 @@ export default function SalesPage() {
   const [quantity, setQuantity] = useState<number>(1);
   const [cart, setCart] = useState<CartItemClient[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [selectedSaleDate, setSelectedSaleDate] = useState<Date | undefined>(undefined);
 
   const [salesHistory, setSalesHistory] = useState<Sale[]>([]);
   const [isLoadingSalesHistory, setIsLoadingSalesHistory] = useState(true);
@@ -69,14 +73,13 @@ export default function SalesPage() {
 
     const product = products.find(p => p.id === selectedProductId);
     if (!product) {
-      // This might happen if product list was filtered after selection, re-fetch for fresh data
       const originalProduct = products.concat(salesHistory.flatMap(s => s.items.map(i => ({...i, id: i.productId, category: 'Food', stock: 0, imageUrl: ''} as Product)))).find(p => p.id === selectedProductId);
       if (!originalProduct) {
         toast({ title: "Product Not Found", description: "The selected product is no longer available or valid.", variant: "destructive" });
         return;
       }
        toast({ title: "Product Issue", description: `${originalProduct.name} might be out of stock or data is stale. Refreshing products.`, variant: "destructive" });
-       fetchPageData(); // Attempt to refresh data
+       fetchPageData(); 
        return;
     }
 
@@ -120,10 +123,9 @@ export default function SalesPage() {
 
   const handleUpdateQuantity = (productId: string, newQuantityStr: string) => {
     const newQuantity = parseInt(newQuantityStr);
-    // Find product from original list, not filtered one, to check true stock
     const product = products.find(p => p.id === productId) || salesHistory.flatMap(s => s.items.map(i => ({...i, id: i.productId, category: 'Food', stock: 0, imageUrl: ''} as Product))).find(p => p.id === productId);
 
-    if (!product) return; // Should not happen if product was in cart
+    if (!product) return; 
 
     if (isNaN(newQuantity) || newQuantity <= 0) {
       handleRemoveFromCart(productId);
@@ -156,18 +158,19 @@ export default function SalesPage() {
     const total = calculateTotal();
 
     startTransition(async () => {
-        const result = await processSale(itemsForAction, total);
+        const result = await processSale(itemsForAction, total, selectedSaleDate);
         if (result.success) {
             toast({ title: "Sale Processed!", description: `Sale ID: ${result.saleId}. Total: ${currencyFormatter.format(total)}. Inventory updated.` });
             setCart([]);
-            fetchPageData(); // Re-fetch products and sales history
+            setSelectedSaleDate(undefined); // Reset selected date
+            fetchPageData(); 
         } else {
             let errorDesc = result.error || "Failed to process sale.";
             if (result.unavailableItems && result.unavailableItems.length > 0) {
                 errorDesc += " Unavailable: " + result.unavailableItems.map(i => `${i.name} (only ${i.availableStock} left)`).join(', ');
             }
             toast({ title: "Sale Failed", description: errorDesc, variant: "destructive" });
-            fetchPageData(); // Re-fetch to show current stock/status
+            fetchPageData(); 
         }
     });
   };
@@ -267,6 +270,34 @@ export default function SalesPage() {
           </CardContent>
           {cart.length > 0 && (
             <CardFooter className="flex flex-col gap-2 pt-4 border-t">
+               <div className="w-full space-y-2 mb-2">
+                <Label htmlFor="sale-date">Sale Date (Optional)</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="sale-date"
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !selectedSaleDate && "text-muted-foreground"
+                      )}
+                      disabled={isPending}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedSaleDate ? format(selectedSaleDate, "PPP") : <span>Pick a date (defaults to now)</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={selectedSaleDate}
+                      onSelect={setSelectedSaleDate}
+                      initialFocus
+                      disabled={isPending}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
               <div className="flex justify-between w-full text-lg font-semibold">
                 <span>Total:</span>
                 <span className="text-primary">{currencyFormatter.format(calculateTotal())}</span>

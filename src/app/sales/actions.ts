@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import type { Sale, SaleItem, Product } from "@/lib/types";
-import { db } from "@/lib/firebase"; // Changed from getDb
+import { db } from "@/lib/firebase"; 
 import { collection, addDoc, doc, getDoc, writeBatch, Timestamp, increment, getDocs, query, orderBy } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
 
@@ -17,6 +17,7 @@ const SaleItemSchema = z.object({
 const ProcessSaleInputSchema = z.object({
   items: z.array(SaleItemSchema).min(1, "Cart cannot be empty."),
   totalAmount: z.number().positive(),
+  // Sale date is now an optional parameter to the action, not part of this schema
 });
 
 export type CartItemForAction = z.infer<typeof SaleItemSchema>;
@@ -30,15 +31,13 @@ const convertSaleTimestampsToISO = (data: any): any => {
 };
 
 export async function getSales(): Promise<Sale[]> {
+  const firestoreDb = db; 
   try {
-    // 'db' is now directly available from the import
-    const salesCollection = collection(db, 'sales');
+    const salesCollection = collection(firestoreDb, 'sales');
     const q = query(salesCollection, orderBy("saleDate", "desc"));
     const salesSnapshot = await getDocs(q);
     const salesList = salesSnapshot.docs.map(doc => {
       const data = doc.data();
-      // Calculate total items for display if needed, or do it client-side
-      // const totalItems = data.items.reduce((sum, item) => sum + item.quantity, 0);
       return convertSaleTimestampsToISO({ id: doc.id, ...data }) as Sale;
     });
     return salesList;
@@ -51,28 +50,31 @@ export async function getSales(): Promise<Sale[]> {
 
 export async function processSale(
   cartItems: CartItemForAction[],
-  totalAmount: number
+  totalAmount: number,
+  customSaleDate?: Date // Optional custom sale date
 ): Promise<{ success: boolean; saleId?: string; error?: string; unavailableItems?: {productId: string, name: string, availableStock: number}[] }> {
-
+  
+  const firestoreDb = db;
+  // Validate cartItems and totalAmount (core sale data)
+  // We don't include customSaleDate in this schema as it's an optional overlay to the core transaction logic.
   const validation = ProcessSaleInputSchema.safeParse({ items: cartItems, totalAmount });
   if (!validation.success) {
     return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
   }
 
   try {
-    // 'db' is now directly available from the import
-    const batch = writeBatch(db);
+    const batch = writeBatch(firestoreDb);
     const unavailableItems: {productId: string, name: string, availableStock: number}[] = [];
 
     // Validate stock and prepare batch updates for products
     for (const item of cartItems) {
-      const productRef = doc(db, 'products', item.productId);
+      const productRef = doc(firestoreDb, 'products', item.productId);
       const productDoc = await getDoc(productRef);
 
       if (!productDoc.exists()) {
         return { success: false, error: `Product ${item.productName} not found.` };
       }
-      const productData = productDoc.data() as Product; // Assuming Product type includes stock
+      const productData = productDoc.data() as Product; 
       if (productData.stock < item.quantity) {
         unavailableItems.push({ productId: item.productId, name: item.productName, availableStock: productData.stock });
       }
@@ -87,18 +89,18 @@ export async function processSale(
     const saleData = {
       items: cartItems,
       totalAmount,
-      saleDate: Timestamp.now(), // Use Firestore Timestamp for current time
+      saleDate: customSaleDate ? Timestamp.fromDate(customSaleDate) : Timestamp.now(),
     };
-    const salesCollectionRef = collection(db, 'sales');
-    const newSaleRef = doc(salesCollectionRef); // Auto-generate ID for the sale
+    const salesCollectionRef = collection(firestoreDb, 'sales');
+    const newSaleRef = doc(salesCollectionRef); 
     batch.set(newSaleRef, saleData);
 
     // Commit all operations
     await batch.commit();
 
-    revalidatePath('/products'); // To reflect updated stock
-    revalidatePath('/sales'); // To reflect new sale in history
-    revalidatePath('/'); // To reflect updated dashboard metrics
+    revalidatePath('/products'); 
+    revalidatePath('/sales'); 
+    revalidatePath('/'); 
 
     return { success: true, saleId: newSaleRef.id };
 
@@ -107,7 +109,7 @@ export async function processSale(
     let errorMessage = "Failed to process sale.";
     if (e.code === 'permission-denied') {
       errorMessage = "Firestore permission denied. Please check your security rules.";
-    } else if (e.message.includes("stock") || e.message.includes("product")) { // Basic check for custom errors
+    } else if (e.message.includes("stock") || e.message.includes("product")) { 
         errorMessage = e.message;
     }
     return { success: false, error: errorMessage };
