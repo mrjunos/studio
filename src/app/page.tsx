@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { PageTitle } from "@/components/shared/page-title";
-import { DollarSign, TrendingUp, Coffee, BarChart3, Archive, ExternalLink, Landmark, Scale } from "lucide-react"; // Added Landmark, Scale
+import { DollarSign, TrendingUp, Coffee, BarChart3, Archive, ExternalLink, Scale, CreditCard, ListChecks, BadgeDollarSign } from "lucide-react";
 import type { MetricCardProps, DailySalesData, LowStockItemForDashboard } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +19,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 
 const initialMetrics: MetricCardProps[] = [
   { title: "Ventas Totales", value: "$0", icon: DollarSign, description: "Suma de todas las ventas completadas" },
   { title: "Ventas (Últimos 30 Días)", value: "$0", icon: TrendingUp, description: "Suma de ventas en los últimos 30 días" },
-  { title: "Balance", value: "$0", icon: Scale, description: "(Ventas + Otros Ingresos) - Gastos" },
+  { title: "Gastos (Últimos 30 Días)", value: "$0", icon: CreditCard, description: "Suma de gastos en los últimos 30 días" },
+  { title: "Balance", value: "$0", icon: Scale, description: "(Ventas + Otros Ingresos) - Gastos (Histórico)" },
+  { title: "Transacciones (Últimos 30 Días)", value: "0", icon: ListChecks, description: "Número total de ventas individuales" },
+  { title: "Ticket Promedio (Últimos 30 Días)", value: "$0", icon: BadgeDollarSign, description: "Valor promedio por transacción" },
   { title: "Producto Más Vendido", value: "N/A", icon: Coffee, description: "Artículo vendido con más frecuencia" },
   { title: "Productos Activos", value: "0", icon: BarChart3, description: "Número de productos disponibles" },
 ];
@@ -59,8 +62,17 @@ export default function DashboardPage() {
             if (metric.title === "Ventas (Últimos 30 Días)" && result.salesLast30Days !== undefined) {
               return { ...metric, value: currencyFormatter.format(result.salesLast30Days) };
             }
+            if (metric.title === "Gastos (Últimos 30 Días)" && result.expensesLast30Days !== undefined) {
+              return { ...metric, value: currencyFormatter.format(result.expensesLast30Days) };
+            }
             if (metric.title === "Balance" && result.balance !== undefined) {
               return { ...metric, value: currencyFormatter.format(result.balance) };
+            }
+            if (metric.title === "Transacciones (Últimos 30 Días)" && result.transactionsLast30Days !== undefined) {
+              return { ...metric, value: result.transactionsLast30Days.toString() };
+            }
+            if (metric.title === "Ticket Promedio (Últimos 30 Días)" && result.averageTicketLast30Days !== undefined) {
+              return { ...metric, value: currencyFormatter.format(result.averageTicketLast30Days) };
             }
             if (metric.title === "Productos Activos" && result.activeProductsCount !== undefined) {
               return { ...metric, value: result.activeProductsCount.toString() };
@@ -87,7 +99,8 @@ export default function DashboardPage() {
           description: result.error,
           variant: "destructive",
         });
-        setMetrics(initialMetrics.map(im => ({...im}))); 
+        // Reset metrics to initial to clear potentially stale data on error
+        setMetrics(initialMetrics.map(im => ({...im, value: im.title.includes("0") || im.title.includes("N/A") ? im.value : (im.value.toString().startsWith("$") ? "$0" : "0") }))); 
         setRecentSales([]);
         setLowStockItems([]);
       }
@@ -107,7 +120,7 @@ export default function DashboardPage() {
   return (
     <div className="p-6">
       <PageTitle title="Dashboard" />
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"> {/* Adjusted grid for 5 cards */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"> 
         {metrics.map((metric) => (
           <Card key={metric.title} className="shadow-md hover:shadow-lg transition-shadow duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -127,12 +140,12 @@ export default function DashboardPage() {
             <CardContent>
               {isLoadingMetric(metric.title, metric.value) ? (
                 <>
-                  <Skeleton className="h-7 w-24 mt-1" /> {/* Adjusted skeleton height */}
+                  <Skeleton className="h-7 w-24 mt-1" />
                   <Skeleton className="h-4 w-48 mt-2" />
                 </>
               ) : (
                 <>
-                  <div className="text-xl font-bold text-primary">{metric.value}</div> {/* Adjusted font size */}
+                  <div className="text-xl font-bold text-primary">{metric.value}</div>
                   {metric.description && (
                     <p className="text-xs text-muted-foreground pt-1">{metric.description}</p>
                   )}
@@ -145,7 +158,7 @@ export default function DashboardPage() {
       <div className="mt-8 grid gap-6 md:grid-cols-2">
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg font-semibold"> {/* Adjusted font size */}
+            <CardTitle className="flex items-center gap-2 text-lg font-semibold">
                 <BarChart3 className="h-5 w-5 text-primary" />Ventas Recientes (Últimos 30 Días)
             </CardTitle>
             <CardDescription>Total ventas por día en los últimos 30 días.</CardDescription>
@@ -203,7 +216,7 @@ export default function DashboardPage() {
         </Card>
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg font-semibold"> {/* Adjusted font size */}
+            <CardTitle className="flex items-center gap-2 text-lg font-semibold">
                 <Archive className="h-5 w-5 text-primary"/>Estado del Inventario
             </CardTitle>
             <CardDescription>Productos con bajo inventario (menos de 10 unidades).</CardDescription>
@@ -242,4 +255,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

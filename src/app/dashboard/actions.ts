@@ -3,9 +3,9 @@
 
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, doc, getDoc, type Timestamp, limit, orderBy } from "firebase/firestore";
-import type { Sale, Product, DailySalesData, LowStockItemForDashboard } from "@/lib/types";
-import { format, subDays, startOfDay, endOfDay, eachDayOfInterval, isSameDay } from 'date-fns';
-import { es } from 'date-fns/locale'; // Import Spanish locale for date formatting if needed
+import type { Sale, Product, DailySalesData, LowStockItemForDashboard, Expense } from "@/lib/types";
+import { format, subDays, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 export async function getDashboardMetrics(): Promise<{
   success: boolean;
@@ -17,20 +17,25 @@ export async function getDashboardMetrics(): Promise<{
   activeProductsCount?: number;
   recentSales?: DailySalesData[]; // For the chart (daily breakdown of last 30 days)
   lowStockItems?: LowStockItemForDashboard[];
+  expensesLast30Days?: number;
+  transactionsLast30Days?: number;
+  averageTicketLast30Days?: number;
   error?: string;
 }> {
   try {
     const firestoreDb = db;
+    const today = new Date();
+    const thirtyDaysAgo = subDays(today, 29); // Inclusive of today
 
-    // --- Total Sales (All Time) & Top Selling Product ---
+    // --- Sales Data (Used for multiple metrics) ---
     const salesCollectionRef = collection(firestoreDb, 'sales');
     const allSalesSnapshot = await getDocs(salesCollectionRef);
     let currentTotalSales = 0;
     const productSalesCount: { [productId: string]: number } = {};
     const salesDataForMetrics: Array<Omit<Sale, 'id' | 'saleDate'> & { saleDate: Timestamp }> = [];
 
-    allSalesSnapshot.forEach(doc => {
-      const saleData = doc.data() as Omit<Sale, 'id' | 'saleDate'> & { saleDate: Timestamp };
+    allSalesSnapshot.forEach(docSnap => {
+      const saleData = docSnap.data() as Omit<Sale, 'id' | 'saleDate'> & { saleDate: Timestamp };
       salesDataForMetrics.push(saleData);
       currentTotalSales += saleData.totalAmount || 0;
       saleData.items.forEach(item => {
@@ -38,6 +43,7 @@ export async function getDashboardMetrics(): Promise<{
       });
     });
 
+    // --- Top Selling Product (All Time) ---
     let currentTopSellingProduct: { name: string; quantity: number } | null = null;
     if (Object.keys(productSalesCount).length > 0) {
       let maxQuantity = 0;
@@ -66,19 +72,25 @@ export async function getDashboardMetrics(): Promise<{
     const otherIncomesCollectionRef = collection(firestoreDb, 'otherIncomes');
     const otherIncomesSnapshot = await getDocs(otherIncomesCollectionRef);
     let currentOtherIncomeTotal = 0;
-    otherIncomesSnapshot.forEach(doc => {
-      currentOtherIncomeTotal += doc.data().amount || 0;
+    otherIncomesSnapshot.forEach(docSnap => {
+      currentOtherIncomeTotal += docSnap.data().amount || 0;
     });
 
-    // --- Total Expenses (All Time) ---
+    // --- Total Expenses (All Time) & Expenses (Last 30 Days) ---
     const expensesCollectionRef = collection(firestoreDb, 'expenses');
     const expensesSnapshot = await getDocs(expensesCollectionRef);
     let currentTotalExpenses = 0;
-    expensesSnapshot.forEach(doc => {
-      currentTotalExpenses += doc.data().amount || 0;
+    let currentExpensesLast30Days = 0;
+    expensesSnapshot.forEach(docSnap => {
+      const expense = docSnap.data() as Omit<Expense, 'id' | 'expenseDate'> & { expenseDate: Timestamp };
+      currentTotalExpenses += expense.amount || 0;
+      const expenseDate = expense.expenseDate.toDate();
+      if (expenseDate >= startOfDay(thirtyDaysAgo) && expenseDate <= endOfDay(today)) {
+        currentExpensesLast30Days += expense.amount || 0;
+      }
     });
 
-    // --- Calculate Balance ---
+    // --- Calculate Balance (All Time) ---
     const currentBalance = (currentTotalSales + currentOtherIncomeTotal) - currentTotalExpenses;
 
     // --- Active Products Count ---
@@ -86,13 +98,9 @@ export async function getDashboardMetrics(): Promise<{
     const activeProductsSnapshot = await getDocs(activeProductsQuery);
     const currentActiveProductsCount = activeProductsSnapshot.size;
 
-    // --- Recent Sales for Chart (Last 30 Days) & Total Sales Last 30 Days ---
-    const today = new Date();
-    const thirtyDaysAgo = subDays(today, 29);
-    
+    // --- Sales Data for Last 30 Days (Chart, Total, Count, Avg Ticket) ---
     const last30DaysInterval = eachDayOfInterval({ start: thirtyDaysAgo, end: today });
     const dailySalesMap: { [key: string]: number } = {};
-
     last30DaysInterval.forEach(day => {
       dailySalesMap[format(day, 'yyyy-MM-dd')] = 0;
     });
@@ -110,12 +118,13 @@ export async function getDashboardMetrics(): Promise<{
     });
 
     const currentRecentSalesChartData: DailySalesData[] = last30DaysInterval.map(day => ({
-      date: format(day, 'MMM d', { locale: es }),
+      date: format(day, 'MMM d', { locale: es }), // Format for X-axis labels
       total: dailySalesMap[format(day, 'yyyy-MM-dd')] || 0,
     }));
     
     const salesLast30DaysTotal = currentRecentSalesChartData.reduce((sum, day) => sum + day.total, 0);
-
+    const currentTransactionsLast30Days = salesInLast30Days.length;
+    const currentAverageTicketLast30Days = currentTransactionsLast30Days > 0 ? salesLast30DaysTotal / currentTransactionsLast30Days : 0;
 
     // --- Low Stock Items ---
     const lowStockQuery = query(
@@ -145,6 +154,9 @@ export async function getDashboardMetrics(): Promise<{
       topSellingProduct: currentTopSellingProduct,
       recentSales: currentRecentSalesChartData,
       lowStockItems: currentLowStockItems,
+      expensesLast30Days: currentExpensesLast30Days,
+      transactionsLast30Days: currentTransactionsLast30Days,
+      averageTicketLast30Days: currentAverageTicketLast30Days,
     };
 
   } catch (error: any) {
