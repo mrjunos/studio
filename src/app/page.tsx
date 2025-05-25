@@ -14,7 +14,7 @@ const initialMetrics: MetricCardProps[] = [
   { title: "Total Sales", value: "$0", icon: DollarSign, description: "Sum of all completed sales" },
   { title: "Other Income", value: "$0", icon: TrendingUp, description: "Sum of other income sources" },
   { title: "Top Selling Product", value: "N/A", icon: Coffee, description: "Most frequently sold item" },
-  { title: "Active Products", value: "0", icon: BarChart3, description: "Number of products in stock" },
+  { title: "Active Products", value: "0", icon: BarChart3, description: "Number of products available" },
 ];
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
@@ -43,8 +43,20 @@ export default function DashboardPage() {
             if (metric.title === "Other Income" && result.otherIncomeTotal !== undefined) {
               return { ...metric, value: currencyFormatter.format(result.otherIncomeTotal) };
             }
-            // TODO: Update other metrics here when they are implemented in the action
-            // e.g., Top Selling Product, Active Products
+            if (metric.title === "Active Products" && result.activeProductsCount !== undefined) {
+              return { ...metric, value: result.activeProductsCount.toString() };
+            }
+            if (metric.title === "Top Selling Product") {
+              if (result.topSellingProduct) {
+                return { 
+                  ...metric, 
+                  value: result.topSellingProduct.name, 
+                  description: `Most sold: ${result.topSellingProduct.quantity} units` 
+                };
+              } else {
+                return { ...metric, value: "N/A", description: "No sales data yet" };
+              }
+            }
             return metric;
           })
         );
@@ -54,41 +66,19 @@ export default function DashboardPage() {
           description: result.error,
           variant: "destructive",
         });
+         // If there's an error, keep initial placeholder values but stop overall loading
+        setMetrics(initialMetrics.map(im => ({...im}))); // Reset to initial values to clear skeletons if partially loaded
       }
-      // Simulate other metrics loading for a bit longer for demo purposes
-      // In a real app, each metric might have its own fetch or all come from getDashboardMetrics
-      // For metrics not yet implemented via Firestore, we can keep placeholders or remove this timeout.
-      // For now, we'll only keep placeholders for "Top Selling Product" and "Active Products".
-      setTimeout(() => {
-         setMetrics(prevMetrics =>
-          prevMetrics.map(metric => {
-            if (metric.title === "Top Selling Product" && metric.value === "N/A") { // Only update if not already set
-              return { ...metric, value: "Espresso" }; // Placeholder
-            }
-            if (metric.title === "Active Products" && metric.value === "0") {
-              return { ...metric, value: "15" }; // Placeholder
-            }
-            return metric;
-          })
-        );
-        setLoading(false); // Set loading to false after all data (real or placeholder) is set
-      }, 200); // Shorter delay, main metrics should load quickly
+      setLoading(false);
     };
 
     fetchMetrics();
   }, [toast]);
 
   const isLoadingMetric = (metricTitle: string, currentValue: string | number) => {
-    if (!loading) return false; // If overall loading is done, no metric is loading
+    if (!loading) return false; 
 
     const initialValueForMetric = initialMetrics.find(m => m.title === metricTitle)?.value;
-    
-    // Specific logic for Total Sales and Other Income (fetched from Firestore)
-    if (metricTitle === "Total Sales" || metricTitle === "Other Income") {
-        return currentValue === initialValueForMetric;
-    }
-    // For other metrics, they are considered loading if their value is still the initial placeholder.
-    // This part can be removed once all metrics are fetched from backend.
     return currentValue === initialValueForMetric;
   };
 
@@ -137,7 +127,7 @@ export default function DashboardPage() {
             <CardTitle>Recent Sales Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? ( // General loading for placeholder sections
+            {loading && !metrics.find(m => m.title === "Total Sales")?.value.startsWith('$') ? ( 
               <div className="space-y-4">
                 <Skeleton className="h-8 w-full" />
                 <Skeleton className="h-8 w-full" />
@@ -145,6 +135,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <p className="text-muted-foreground">Sales chart or recent sales list will be displayed here.</p>
+              // Placeholder for future chart implementation
             )}
           </CardContent>
         </Card>
@@ -153,13 +144,14 @@ export default function DashboardPage() {
             <CardTitle>Inventory Status</CardTitle>
           </CardHeader>
           <CardContent>
-             {loading ? ( // General loading for placeholder sections
+             {loading && metrics.find(m => m.title === "Active Products")?.value === "0" ? (
               <div className="space-y-4">
                 <Skeleton className="h-8 w-full" />
                 <Skeleton className="h-8 w-full" />
               </div>
             ) : (
               <p className="text-muted-foreground">Low stock items or inventory overview will be displayed here.</p>
+              // Placeholder for future chart implementation
             )}
           </CardContent>
         </Card>
