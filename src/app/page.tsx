@@ -11,8 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getDashboardMetrics } from "./dashboard/actions";
 
 const initialMetrics: MetricCardProps[] = [
-  { title: "Total Sales", value: "$0.00", icon: DollarSign, description: "Sum of all completed sales" },
-  { title: "Other Income", value: "$0.00", icon: TrendingUp, description: "Sum of other income sources" },
+  { title: "Total Sales", value: "$0", icon: DollarSign, description: "Sum of all completed sales" },
+  { title: "Other Income", value: "$0", icon: TrendingUp, description: "Sum of other income sources" },
   { title: "Top Selling Product", value: "N/A", icon: Coffee, description: "Most frequently sold item" },
   { title: "Active Products", value: "0", icon: BarChart3, description: "Number of products in stock" },
 ];
@@ -20,6 +20,8 @@ const initialMetrics: MetricCardProps[] = [
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
 });
 
 export default function DashboardPage() {

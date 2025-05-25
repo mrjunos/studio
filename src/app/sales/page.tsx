@@ -23,6 +23,8 @@ interface CartItemClient extends CartItemForAction {
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
 });
 
 export default function SalesPage() {
@@ -190,7 +192,7 @@ export default function SalesPage() {
                   <SelectContent>
                     {products.map(product => (
                       <SelectItem key={product.id} value={product.id} disabled={product.stock === 0}>
-                        {product.name} (Stock: {product.stock}) - ${product.price.toFixed(2)}
+                        {product.name} (Stock: {product.stock}) - {currencyFormatter.format(product.price)}
                       </SelectItem>
                     ))}
                       {products.length === 0 && !isLoadingProducts && (
@@ -251,7 +253,7 @@ export default function SalesPage() {
                           disabled={isPending}
                         />
                       </TableCell>
-                      <TableCell className="text-right">${(item.priceAtSale * item.quantity).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">{currencyFormatter.format(item.priceAtSale * item.quantity)}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => handleRemoveFromCart(item.productId)} className="text-destructive hover:text-destructive/80" disabled={isPending}>
                           <XCircle className="h-4 w-4" />

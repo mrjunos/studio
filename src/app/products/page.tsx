@@ -32,6 +32,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -159,7 +166,7 @@ export default function ProductsPage() {
                      <DollarSign className="h-4 w-4 mr-1.5 text-muted-foreground"/>
                      <div>
                         <p className="text-xs text-muted-foreground">Price</p>
-                        <p className="font-semibold">${product.price.toFixed(2)}</p>
+                        <p className="font-semibold">{currencyFormatter.format(product.price)}</p>
                      </div>
                   </div>
                    <div className="flex items-center">
