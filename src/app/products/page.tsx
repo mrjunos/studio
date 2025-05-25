@@ -110,14 +110,22 @@ export default function ProductsPage() {
 
   const getCategoryBadgeVariant = (category: Product["category"]) => {
     switch (category) {
-      case "Bolsa de Café":
+      case "Drinks":
         return "default";
-      case "Aji":
+      case "Food":
         return "secondary";
+      case "Merchandise":
+          return "outline";
       default:
+        // Fallback for categories like "Bolsa de Café" or "Aji" if they still exist
+        // or if new categories are added without explicit variants here.
+        const lowerCategory = category.toLowerCase();
+        if (lowerCategory.includes("coffee") || lowerCategory.includes("café")) return "default";
+        if (lowerCategory.includes("food") || lowerCategory.includes("aji")) return "secondary";
         return "outline";
     }
   };
+  
 
   return (
     <div className="p-6">
@@ -190,9 +198,9 @@ export default function ProductsPage() {
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button 
-                        variant="destructive" 
+                        variant="ghost" 
                         size="sm" 
-                        className="w-9 h-9 p-0 flex items-center justify-center" 
+                        className="text-destructive hover:bg-destructive/20 hover:text-destructive focus-visible:ring-destructive w-9 h-9 p-0 flex items-center justify-center" 
                         disabled={isPending}
                         aria-label="Delete product"
                       >
