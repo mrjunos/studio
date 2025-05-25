@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import type { Sale, SaleItem, Product } from "@/lib/types";
-import { getDb } from "@/lib/firebase"; // Use getDb
+import { db } from "@/lib/firebase"; // Changed from getDb
 import { collection, addDoc, doc, getDoc, writeBatch, Timestamp, increment, getDocs, query, orderBy } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
 
@@ -31,7 +31,7 @@ const convertSaleTimestampsToISO = (data: any): any => {
 
 export async function getSales(): Promise<Sale[]> {
   try {
-    const db = getDb();
+    // 'db' is now directly available from the import
     const salesCollection = collection(db, 'sales');
     const q = query(salesCollection, orderBy("saleDate", "desc"));
     const salesSnapshot = await getDocs(q);
@@ -60,7 +60,7 @@ export async function processSale(
   }
 
   try {
-    const db = getDb();
+    // 'db' is now directly available from the import
     const batch = writeBatch(db);
     const unavailableItems: {productId: string, name: string, availableStock: number}[] = [];
 
@@ -98,6 +98,7 @@ export async function processSale(
 
     revalidatePath('/products'); // To reflect updated stock
     revalidatePath('/sales'); // To reflect new sale in history
+    revalidatePath('/'); // To reflect updated dashboard metrics
 
     return { success: true, saleId: newSaleRef.id };
 

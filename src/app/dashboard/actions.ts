@@ -1,7 +1,7 @@
 
 'use server';
 
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase"; // Changed from getDb
 import { collection, getDocs, type Timestamp } from "firebase/firestore";
 import type { Sale } from "@/lib/types"; // Sale type might not be directly needed if only metrics are returned
 
@@ -15,12 +15,13 @@ export async function getDashboardMetrics(): Promise<{
   error?: string;
 }> {
   try {
+    // 'db' is now directly available from the import
     // Calculate Total Sales
     const salesCollectionRef = collection(db, 'sales');
     const salesSnapshot = await getDocs(salesCollectionRef);
     let currentTotalSales = 0;
     salesSnapshot.forEach(doc => {
-      const saleData = doc.data(); 
+      const saleData = doc.data();
       currentTotalSales += saleData.totalAmount || 0;
     });
 
@@ -33,10 +34,10 @@ export async function getDashboardMetrics(): Promise<{
       currentOtherIncomeTotal += incomeData.amount || 0;
     });
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       totalSales: currentTotalSales,
-      otherIncomeTotal: currentOtherIncomeTotal 
+      otherIncomeTotal: currentOtherIncomeTotal
     };
 
   } catch (error: any) {

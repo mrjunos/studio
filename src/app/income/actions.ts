@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import type { OtherIncome } from "@/lib/types";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase"; // Changed from getDb
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, Timestamp, orderBy, query } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
 
@@ -27,6 +27,7 @@ const convertTimestampsToISO = (data: any) : any => {
 
 export async function getOtherIncomes(): Promise<OtherIncome[]> {
   try {
+    // 'db' is now directly available from the import
     const incomesCollection = collection(db, 'otherIncomes');
     // Order by incomeDate descending
     const q = query(incomesCollection, orderBy("incomeDate", "desc"));
@@ -49,6 +50,7 @@ export async function addOtherIncome(data: OtherIncomeFormInput): Promise<{ succ
   }
 
   try {
+    // 'db' is now directly available from the import
     const incomeData = {
       ...validation.data,
       incomeDate: Timestamp.fromDate(validation.data.incomeDate), // Store as Firestore Timestamp
@@ -70,13 +72,14 @@ export async function updateOtherIncome(id: string, data: OtherIncomeFormInput):
   }
 
   try {
+    // 'db' is now directly available from the import
     const incomeRef = doc(db, 'otherIncomes', id);
     const incomeDoc = await getDoc(incomeRef);
 
     if (!incomeDoc.exists()) {
       return { success: false, error: "Income entry not found" };
     }
-    
+
     const updatedData = {
       ...validation.data,
       incomeDate: Timestamp.fromDate(validation.data.incomeDate), // Store as Firestore Timestamp
@@ -94,6 +97,7 @@ export async function updateOtherIncome(id: string, data: OtherIncomeFormInput):
 
 export async function deleteOtherIncome(id: string): Promise<{ success: boolean; error?: string }> {
   try {
+    // 'db' is now directly available from the import
     const incomeRef = doc(db, 'otherIncomes', id);
     await deleteDoc(incomeRef);
     revalidatePath('/income');

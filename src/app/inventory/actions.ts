@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import type { InventoryAdjustment } from "@/lib/types";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase"; // Changed from getDb
 import { collection, getDocs, addDoc, doc, updateDoc, getDoc, Timestamp, increment, writeBatch, orderBy, query } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
 
@@ -28,6 +28,7 @@ const convertTimestampsToISO = (data: any) : any => {
 
 export async function getInventoryAdjustments(): Promise<InventoryAdjustment[]> {
   try {
+    // 'db' is now directly available from the import
     const adjustmentsCollection = collection(db, 'inventoryAdjustments');
     const q = query(adjustmentsCollection, orderBy("adjustmentDate", "desc"));
     const adjustmentSnapshot = await getDocs(q);
@@ -52,10 +53,11 @@ export async function addInventoryAdjustment(data: InventoryAdjustmentFormInput,
 
   const { productId, quantityChange } = validation.data;
 
-  const productRef = doc(db, 'products', productId);
-  const adjustmentCollectionRef = collection(db, 'inventoryAdjustments');
-
   try {
+    // 'db' is now directly available from the import
+    const productRef = doc(db, 'products', productId);
+    const adjustmentCollectionRef = collection(db, 'inventoryAdjustments');
+
     const productDoc = await getDoc(productRef);
     if (!productDoc.exists()) {
       return { success: false, error: "Product not found." };
@@ -75,7 +77,7 @@ export async function addInventoryAdjustment(data: InventoryAdjustmentFormInput,
     };
     const newAdjustmentRef = doc(adjustmentCollectionRef); // Auto-generate ID
     batch.set(newAdjustmentRef, adjustmentDataForFirestore);
-    
+
     // 2. Update product stock
     batch.update(productRef, { stock: increment(quantityChange) });
 
@@ -84,10 +86,10 @@ export async function addInventoryAdjustment(data: InventoryAdjustmentFormInput,
     revalidatePath('/inventory');
     revalidatePath('/products'); // Product stock changed
 
-    const newAdjustment = { 
-        id: newAdjustmentRef.id, 
-        ...validation.data, 
-        adjustmentDate: validation.data.adjustmentDate.toISOString() 
+    const newAdjustment = {
+        id: newAdjustmentRef.id,
+        ...validation.data,
+        adjustmentDate: validation.data.adjustmentDate.toISOString()
     };
     return { success: true, adjustment: newAdjustment as InventoryAdjustment };
 

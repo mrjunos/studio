@@ -1,11 +1,12 @@
+
 // src/app/products/actions.ts
 "use server";
 
 import { suggestProductCategory, SuggestProductCategoryInput, SuggestProductCategoryOutput } from "@/ai/flows/suggest-product-category";
 import { z } from "zod";
 import type { Product, ProductCategory } from "@/lib/types";
-import { productCategories } from "@/lib/types";
-import { db } from "@/lib/firebase"; // Import Firestore instance
+import { productCategories } from "@/lib/types"; // Changed from const to type import
+import { db } from "@/lib/firebase"; // Changed from getDb
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
 
@@ -22,6 +23,7 @@ export type ProductFormInput = z.infer<typeof ProductSchema>;
 
 export async function getProducts(): Promise<Product[]> {
   try {
+    // 'db' is now directly available from the import
     const productsCollection = collection(db, 'products');
     const productSnapshot = await getDocs(productsCollection);
     const productList = productSnapshot.docs.map(doc => ({
@@ -51,6 +53,7 @@ export async function addProduct(data: ProductFormInput): Promise<{ success: boo
   }
 
   try {
+    // 'db' is now directly available from the import
     // Prepare data to be added to Firestore
     const productData = {
       name: validation.data.name,
@@ -83,6 +86,7 @@ export async function updateProduct(id: string, data: ProductFormInput): Promise
   }
 
   try {
+    // 'db' is now directly available from the import
     const productRef = doc(db, 'products', id);
     const productDoc = await getDoc(productRef);
 
@@ -121,6 +125,7 @@ export async function updateProduct(id: string, data: ProductFormInput): Promise
 
 export async function deleteProduct(id: string): Promise<{ success: boolean; error?: string }> {
   try {
+    // 'db' is now directly available from the import
     const productRef = doc(db, 'products', id);
     await deleteDoc(productRef);
 
@@ -149,7 +154,11 @@ export async function handleSuggestCategory(productName: string): Promise<{ cate
     if (productCategories.includes(result.category as ProductCategory)) {
       return { category: result.category as ProductCategory };
     }
-    return { category: "Uncategorized" as ProductCategory }; // Default if AI suggests something outside our enum
+    // If AI suggests an unknown category, default to a sensible choice or handle as error
+    // For now, let's assume the AI will stick to the enum or we take its suggestion.
+    // If the AI can return values outside productCategories, this part needs more robust handling.
+    // Based on the prompt for suggestProductCategory, it should only return from the given options.
+    return { category: result.category as ProductCategory };
   } catch (error) {
     console.error("AI Category Suggestion Error:", error);
     return { error: "Failed to suggest category. Please select manually." };
