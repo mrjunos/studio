@@ -30,6 +30,7 @@ import type { Product, InventoryAdjustment } from "@/lib/types";
 import { getProducts } from "@/app/products/actions";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { es } from 'date-fns/locale';
 import { getInventoryAdjustments, addInventoryAdjustment, type InventoryAdjustmentFormInput } from "./actions";
 
 export default function InventoryPage() {
@@ -40,7 +41,7 @@ export default function InventoryPage() {
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string>("");
-  const [quantityChange, setQuantityChange] = useState<number | string>(""); // Allow string for input
+  const [quantityChange, setQuantityChange] = useState<number | string>(""); 
   const [reason, setReason] = useState<string>("");
   
   const [isPending, startTransition] = useTransition();
@@ -57,7 +58,7 @@ export default function InventoryPage() {
       setProducts(fetchedProducts);
       setAdjustments(fetchedAdjustments);
     } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Could not load page data.", variant: "destructive" });
+      toast({ title: "Error", description: error.message || "No se pudieron cargar los datos de la página.", variant: "destructive" });
     }
     setIsLoadingProducts(false);
     setIsLoadingAdjustments(false);
@@ -76,19 +77,19 @@ export default function InventoryPage() {
 
   const handleSubmitAdjustment = async () => {
     if (!selectedProductId || quantityChange === "" || Number(quantityChange) === 0) {
-      toast({ title: "Invalid Input", description: "Please select a product and enter a valid, non-zero quantity change.", variant: "destructive" });
+      toast({ title: "Entrada Inválida", description: "Por favor, selecciona un producto e ingresa un cambio de cantidad válido y diferente de cero.", variant: "destructive" });
       return;
     }
     
     const product = products.find(p => p.id === selectedProductId);
     if (!product) {
-      toast({ title: "Product Not Found", variant: "destructive" });
+      toast({ title: "Producto No Encontrado", variant: "destructive" });
       return;
     }
 
     const numericQuantityChange = Number(quantityChange);
     if (isNaN(numericQuantityChange)) {
-       toast({ title: "Invalid Quantity", description: "Quantity change must be a number.", variant: "destructive" });
+       toast({ title: "Cantidad Inválida", description: "El cambio de cantidad debe ser un número.", variant: "destructive" });
        return;
     }
     
@@ -101,11 +102,11 @@ export default function InventoryPage() {
     startTransition(async () => {
       const result = await addInventoryAdjustment(adjustmentData, product.name);
       if (result.success) {
-        toast({ title: "Inventory Adjusted", description: `${product.name} stock changed by ${numericQuantityChange}.` });
-        fetchPageData(); // Refresh both adjustments and product stock implicitly
+        toast({ title: "Inventario Ajustado", description: `El stock de ${product.name} cambió en ${numericQuantityChange}.` });
+        fetchPageData(); 
         setIsDialogOpen(false);
       } else {
-        toast({ title: "Adjustment Failed", description: result.error || "An unexpected error occurred.", variant: "destructive" });
+        toast({ title: "Ajuste Fallido", description: result.error || "Ocurrió un error inesperado.", variant: "destructive" });
       }
     });
   };
@@ -113,10 +114,10 @@ export default function InventoryPage() {
   return (
     <div className="p-6">
       <PageTitle 
-        title="Inventory Adjustments" 
+        title="Ajustes de Inventario" 
         actions={
           <Button onClick={handleAddAdjustmentDialog} className="bg-primary hover:bg-primary/90" disabled={isPending || isLoadingProducts}>
-            <PlusCircle className="mr-2 h-4 w-4" /> New Adjustment
+            <PlusCircle className="mr-2 h-4 w-4" /> Nuevo Ajuste
           </Button>
         } 
       />
@@ -130,17 +131,17 @@ export default function InventoryPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead className="text-right">Quantity Change</TableHead>
-                <TableHead>Reason</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Producto</TableHead>
+                <TableHead className="text-right">Cambio Cantidad</TableHead>
+                <TableHead>Razón</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {adjustments.length > 0 ? (
                 adjustments.map((adj) => (
                   <TableRow key={adj.id}>
-                    <TableCell>{format(new Date(adj.adjustmentDate), "PPp")}</TableCell>
+                    <TableCell>{format(new Date(adj.adjustmentDate), "PPp", { locale: es })}</TableCell>
                     <TableCell className="font-medium">{adj.productName}</TableCell>
                     <TableCell className={`text-right font-semibold ${adj.quantityChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {adj.quantityChange > 0 ? `+${adj.quantityChange}` : adj.quantityChange}
@@ -151,7 +152,7 @@ export default function InventoryPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center h-24">
-                    No inventory adjustments recorded yet.
+                    Aún no hay ajustes de inventario registrados.
                   </TableCell>
                 </TableRow>
               )}
@@ -163,23 +164,23 @@ export default function InventoryPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>New Inventory Adjustment</DialogTitle>
+            <DialogTitle>Nuevo Ajuste de Inventario</DialogTitle>
             <DialogDescription>
-              Adjust the stock level for a product. Use negative values for decreases.
+              Ajusta el nivel de stock de un producto. Usa valores negativos para disminuciones.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="product-select">Product</Label>
+              <Label htmlFor="product-select">Producto</Label>
               {isLoadingProducts ? <Loader2 className="h-5 w-5 animate-spin" /> : (
                 <Select value={selectedProductId} onValueChange={setSelectedProductId} disabled={isPending}>
                   <SelectTrigger id="product-select">
-                    <SelectValue placeholder="Select a product" />
+                    <SelectValue placeholder="Selecciona un producto" />
                   </SelectTrigger>
                   <SelectContent>
                     {products.map(product => (
                       <SelectItem key={product.id} value={product.id}>
-                        {product.name} (Current Stock: {product.stock})
+                        {product.name} (Stock Actual: {product.stock})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -187,21 +188,21 @@ export default function InventoryPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="quantity-change">Quantity Change</Label>
+              <Label htmlFor="quantity-change">Cambio de Cantidad</Label>
               <Input 
                 id="quantity-change" 
                 type="number"
-                placeholder="e.g., 10 or -5"
+                placeholder="Ej: 10 o -5"
                 value={quantityChange}
                 onChange={(e) => setQuantityChange(e.target.value)}
                 disabled={isPending}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="reason">Reason (Optional)</Label>
+              <Label htmlFor="reason">Razón (Opcional)</Label>
               <Textarea 
                 id="reason" 
-                placeholder="e.g., Stocktake correction, Damaged goods"
+                placeholder="Ej: Corrección de inventario, Mercancía dañada"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 disabled={isPending}
@@ -210,11 +211,11 @@ export default function InventoryPage() {
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={isPending}>Cancel</Button>
+              <Button type="button" variant="outline" disabled={isPending}>Cancelar</Button>
             </DialogClose>
             <Button type="submit" onClick={handleSubmitAdjustment} disabled={isPending || isLoadingProducts}>
               {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Apply Adjustment
+              Aplicar Ajuste
             </Button>
           </DialogFooter>
         </DialogContent>

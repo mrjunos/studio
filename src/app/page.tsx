@@ -17,22 +17,22 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 
 
 
 const initialMetrics: MetricCardProps[] = [
-  { title: "Total Sales", value: "$0", icon: DollarSign, description: "Sum of all completed sales" },
-  { title: "Other Income", value: "$0", icon: TrendingUp, description: "Sum of other income sources" },
-  { title: "Top Selling Product", value: "N/A", icon: Coffee, description: "Most frequently sold item" },
-  { title: "Active Products", value: "0", icon: BarChart3, description: "Number of products available" },
+  { title: "Ventas Totales", value: "$0", icon: DollarSign, description: "Suma de todas las ventas completadas" },
+  { title: "Otros Ingresos", value: "$0", icon: TrendingUp, description: "Suma de otras fuentes de ingresos" },
+  { title: "Producto Más Vendido", value: "N/A", icon: Coffee, description: "Artículo vendido con más frecuencia" },
+  { title: "Productos Activos", value: "0", icon: BarChart3, description: "Número de productos disponibles" },
 ];
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
+const currencyFormatter = new Intl.NumberFormat('es-CO', { // Adjusted for Colombian Spanish potentially
   style: 'currency',
-  currency: 'USD',
+  currency: 'COP', // Changed to COP
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
 
 const chartConfig = {
   sales: {
-    label: "Sales",
+    label: "Ventas",
     color: "hsl(var(--chart-1))",
   },
 } satisfies ChartConfig;
@@ -52,24 +52,24 @@ export default function DashboardPage() {
       if (result.success) {
         setMetrics(prevMetrics =>
           prevMetrics.map(metric => {
-            if (metric.title === "Total Sales" && result.totalSales !== undefined) {
+            if (metric.title === "Ventas Totales" && result.totalSales !== undefined) {
               return { ...metric, value: currencyFormatter.format(result.totalSales) };
             }
-            if (metric.title === "Other Income" && result.otherIncomeTotal !== undefined) {
+            if (metric.title === "Otros Ingresos" && result.otherIncomeTotal !== undefined) {
               return { ...metric, value: currencyFormatter.format(result.otherIncomeTotal) };
             }
-            if (metric.title === "Active Products" && result.activeProductsCount !== undefined) {
+            if (metric.title === "Productos Activos" && result.activeProductsCount !== undefined) {
               return { ...metric, value: result.activeProductsCount.toString() };
             }
-            if (metric.title === "Top Selling Product") {
+            if (metric.title === "Producto Más Vendido") {
               if (result.topSellingProduct) {
                 return { 
                   ...metric, 
                   value: result.topSellingProduct.name, 
-                  description: `Most sold: ${result.topSellingProduct.quantity} units` 
+                  description: `Más vendido: ${result.topSellingProduct.quantity} unidades` 
                 };
               } else {
-                return { ...metric, value: "N/A", description: "No sales data yet" };
+                return { ...metric, value: "N/A", description: "Aún no hay datos de ventas" };
               }
             }
             return metric;
@@ -79,11 +79,10 @@ export default function DashboardPage() {
         setLowStockItems(result.lowStockItems || []);
       } else if (result.error) {
         toast({
-          title: "Error Fetching Dashboard Data",
+          title: "Error al Cargar Datos del Dashboard",
           description: result.error,
           variant: "destructive",
         });
-        // Reset to initial values on error to ensure UI consistency
         setMetrics(initialMetrics.map(im => ({...im}))); 
         setRecentSales([]);
         setLowStockItems([]);
@@ -96,7 +95,6 @@ export default function DashboardPage() {
 
   const isLoadingMetric = (metricTitle: string, currentValue: string | number) => {
     if (!loading) return false; 
-    // Check if the current value is still the initial placeholder value for that metric
     const initialValueForMetric = initialMetrics.find(m => m.title === metricTitle)?.value;
     return currentValue === initialValueForMetric;
   };
@@ -143,15 +141,15 @@ export default function DashboardPage() {
       <div className="mt-8 grid gap-6 md:grid-cols-2">
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" />Recent Sales (Last 30 Days)</CardTitle>
-            <CardDescription>Total sales amount per day for the past 30 days.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" />Ventas Recientes (Últimos 30 Días)</CardTitle>
+            <CardDescription>Monto total de ventas por día durante los últimos 30 días.</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px] pt-4">
             {loading && recentSales.length === 0 ? ( 
               <Skeleton className="h-full w-full" />
             ) : !loading && recentSales.every(sale => sale.total === 0) ? (
               <div className="flex items-center justify-center h-full">
-                 <p className="text-muted-foreground text-center">No sales activity in the last 30 days.</p>
+                 <p className="text-muted-foreground text-center">Sin actividad de ventas en los últimos 30 días.</p>
               </div>
             ) : recentSales.length > 0 ? (
               <ChartContainer config={chartConfig} className="h-full w-full">
@@ -164,7 +162,6 @@ export default function DashboardPage() {
                             axisLine={false} 
                             tickMargin={8}
                             fontSize={12}
-                            // interval={4} // Show a tick every ~5 days for 30 days, or adjust as needed
                         />
                         <YAxis 
                             tickLine={false} 
@@ -180,7 +177,7 @@ export default function DashboardPage() {
                                     formatter={(value, name, props) => (
                                         <div className="flex flex-col">
                                             <span className="font-medium">{currencyFormatter.format(Number(value))}</span>
-                                            {props.payload.date && (<span className="text-muted-foreground text-xs">on {props.payload.date}</span>)}
+                                            {props.payload.date && (<span className="text-muted-foreground text-xs">el {props.payload.date}</span>)}
                                         </div>
                                     )}
                                     indicator="dot" 
@@ -193,15 +190,15 @@ export default function DashboardPage() {
               </ChartContainer>
             ) : (
                <div className="flex items-center justify-center h-full">
-                <p className="text-muted-foreground text-center">Could not load sales data.</p>
+                <p className="text-muted-foreground text-center">No se pudieron cargar los datos de ventas.</p>
                </div>
             )}
           </CardContent>
         </Card>
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Archive className="h-5 w-5 text-primary"/>Inventory Status</CardTitle>
-            <CardDescription>Products running low on stock (less than 10 units).</CardDescription>
+            <CardTitle className="flex items-center gap-2"><Archive className="h-5 w-5 text-primary"/>Estado del Inventario</CardTitle>
+            <CardDescription>Productos con bajo inventario (menos de 10 unidades).</CardDescription>
           </CardHeader>
           <CardContent>
              {loading && lowStockItems.length === 0 ? (
@@ -220,14 +217,14 @@ export default function DashboardPage() {
                 ))}
               </ul>
             ) : (
-               <p className="text-muted-foreground text-center py-4">All products are well stocked or no products match low stock criteria.</p>
+               <p className="text-muted-foreground text-center py-4">Todos los productos bien abastecidos o ninguno coincide con el criterio de bajo stock.</p>
             )}
           </CardContent>
             {lowStockItems.length > 0 && !loading && (
              <CardFooter>
                 <Button variant="outline" size="sm" asChild className="w-full">
                   <Link href="/inventory">
-                    Adjust Inventory <ExternalLink className="ml-2 h-3 w-3"/>
+                    Ajustar Inventario <ExternalLink className="ml-2 h-3 w-3"/>
                   </Link>
                 </Button>
              </CardFooter>

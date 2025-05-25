@@ -6,8 +6,8 @@ import { AppShell } from "@/components/app-shell";
 import { Toaster } from "@/components/ui/toaster";
 import React from "react";
 // Direct imports for providers
-import { SidebarProvider } from "@/components/ui/sidebar"; // Changed back to direct import
-import { TooltipProvider } from "@/components/ui/tooltip"; // Changed back to direct import
+import { SidebarProvider } from "@/components/ui/sidebar"; 
+import { TooltipProvider } from "@/components/ui/tooltip"; 
 
 
 const geistSans = Geist({
@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "BrewBooks MVP",
-  description: "Coffee shop management made simple",
+  description: "Gestión de cafetería simplificada",
 };
 
 export default function RootLayout({
@@ -31,12 +31,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SidebarProvider defaultOpen> {/* SidebarProvider now directly from ui/sidebar */}
-          <TooltipProvider> {/* TooltipProvider directly from ui/tooltip */}
+        <SidebarProvider defaultOpen>
+          <TooltipProvider>
             <AppShell>{children}</AppShell>
             <Toaster />
           </TooltipProvider>

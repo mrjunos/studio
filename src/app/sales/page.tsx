@@ -15,17 +15,17 @@ import { getProducts } from "@/app/products/actions";
 import { useToast } from "@/hooks/use-toast";
 import { processSale, getSales, type CartItemForAction } from "./actions";
 import { format } from "date-fns";
+import { es } from 'date-fns/locale'; // Import Spanish locale
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
 interface CartItemClient extends CartItemForAction {
-  // productName and productPrice are already in CartItemForAction via SaleItem
 }
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
+const currencyFormatter = new Intl.NumberFormat('es-CO', {
   style: 'currency',
-  currency: 'USD',
+  currency: 'COP',
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
@@ -52,10 +52,10 @@ export default function SalesPage() {
         getProducts(),
         getSales()
       ]);
-      setProducts(fetchedProducts.filter(p => p.stock > 0)); // Only show products with stock for selection
+      setProducts(fetchedProducts.filter(p => p.stock > 0)); 
       setSalesHistory(fetchedSales);
     } catch (error: any) {
-      toast({ title: "Error Loading Page Data", description: error.message || "Could not load data.", variant: "destructive" });
+      toast({ title: "Error al Cargar Datos de la Página", description: error.message || "No se pudieron cargar los datos.", variant: "destructive" });
     }
     setIsLoadingProducts(false);
     setIsLoadingSalesHistory(false);
@@ -67,28 +67,28 @@ export default function SalesPage() {
 
   const handleAddToCart = () => {
     if (!selectedProductId || quantity <= 0) {
-      toast({ title: "Invalid Input", description: "Please select a product and enter a valid quantity.", variant: "destructive" });
+      toast({ title: "Entrada Inválida", description: "Por favor, selecciona un producto e ingresa una cantidad válida.", variant: "destructive" });
       return;
     }
 
     const product = products.find(p => p.id === selectedProductId);
     if (!product) {
-      const originalProduct = products.concat(salesHistory.flatMap(s => s.items.map(i => ({...i, id: i.productId, category: 'Food', stock: 0, imageUrl: ''} as Product)))).find(p => p.id === selectedProductId);
+      const originalProduct = products.concat(salesHistory.flatMap(s => s.items.map(i => ({...i, id: i.productId, category: 'Alimentos', stock: 0, imageUrl: ''} as Product)))).find(p => p.id === selectedProductId);
       if (!originalProduct) {
-        toast({ title: "Product Not Found", description: "The selected product is no longer available or valid.", variant: "destructive" });
+        toast({ title: "Producto No Encontrado", description: "El producto seleccionado ya no está disponible o no es válido.", variant: "destructive" });
         return;
       }
-       toast({ title: "Product Issue", description: `${originalProduct.name} might be out of stock or data is stale. Refreshing products.`, variant: "destructive" });
+       toast({ title: "Problema con Producto", description: `${originalProduct.name} podría estar agotado o los datos están desactualizados. Refrescando productos.`, variant: "destructive" });
        fetchPageData(); 
        return;
     }
 
     if (product.stock <= 0) {
-        toast({ title: "Out of Stock", description: `${product.name} is currently out of stock.`, variant: "destructive"});
+        toast({ title: "Agotado", description: `${product.name} está actualmente agotado.`, variant: "destructive"});
         return;
     }
     if (quantity > product.stock) {
-      toast({ title: "Insufficient Stock", description: `Only ${product.stock} units of ${product.name} available.`, variant: "destructive"});
+      toast({ title: "Stock Insuficiente", description: `Solo hay ${product.stock} unidades de ${product.name} disponibles.`, variant: "destructive"});
       return;
     }
 
@@ -97,7 +97,7 @@ export default function SalesPage() {
       const updatedCart = [...cart];
       const newQuantity = updatedCart[existingCartItemIndex].quantity + quantity;
       if (newQuantity > product.stock) {
-         toast({ title: "Insufficient Stock", description: `Cannot add ${quantity} more. Total ${newQuantity} would exceed stock of ${product.stock}.`, variant: "destructive"});
+         toast({ title: "Stock Insuficiente", description: `No se pueden añadir ${quantity} más. El total ${newQuantity} excedería el stock de ${product.stock}.`, variant: "destructive"});
          return;
       }
       updatedCart[existingCartItemIndex].quantity = newQuantity;
@@ -113,17 +113,17 @@ export default function SalesPage() {
 
     setSelectedProductId("");
     setQuantity(1);
-    toast({ title: "Item Added", description: `${product.name} (x${quantity}) added to cart.` });
+    toast({ title: "Artículo Añadido", description: `${product.name} (x${quantity}) añadido al carrito.` });
   };
 
   const handleRemoveFromCart = (productId: string) => {
     setCart(cart.filter(item => item.productId !== productId));
-    toast({ title: "Item Removed", description: `Item removed from cart.` });
+    toast({ title: "Artículo Eliminado", description: `Artículo eliminado del carrito.` });
   };
 
   const handleUpdateQuantity = (productId: string, newQuantityStr: string) => {
     const newQuantity = parseInt(newQuantityStr);
-    const product = products.find(p => p.id === productId) || salesHistory.flatMap(s => s.items.map(i => ({...i, id: i.productId, category: 'Food', stock: 0, imageUrl: ''} as Product))).find(p => p.id === productId);
+    const product = products.find(p => p.id === productId) || salesHistory.flatMap(s => s.items.map(i => ({...i, id: i.productId, category: 'Alimentos', stock: 0, imageUrl: ''} as Product))).find(p => p.id === productId);
 
     if (!product) return; 
 
@@ -132,7 +132,7 @@ export default function SalesPage() {
       return;
     }
     if (newQuantity > product.stock) {
-      toast({ title: "Insufficient Stock", description: `Only ${product.stock} units of ${product.name} available.`, variant: "destructive"});
+      toast({ title: "Stock Insuficiente", description: `Solo hay ${product.stock} unidades de ${product.name} disponibles.`, variant: "destructive"});
       setCart(cart.map(item => item.productId === productId ? { ...item, quantity: product.stock } : item));
       return;
     }
@@ -145,7 +145,7 @@ export default function SalesPage() {
 
   const handleProcessSale = async () => {
     if (cart.length === 0) {
-      toast({ title: "Empty Cart", description: "Please add items to the cart before processing sale.", variant: "destructive" });
+      toast({ title: "Carrito Vacío", description: "Por favor, añade artículos al carrito antes de procesar la venta.", variant: "destructive" });
       return;
     }
 
@@ -160,16 +160,16 @@ export default function SalesPage() {
     startTransition(async () => {
         const result = await processSale(itemsForAction, total, selectedSaleDate);
         if (result.success) {
-            toast({ title: "Sale Processed!", description: `Sale ID: ${result.saleId}. Total: ${currencyFormatter.format(total)}. Inventory updated.` });
+            toast({ title: "¡Venta Procesada!", description: `ID Venta: ${result.saleId}. Total: ${currencyFormatter.format(total)}. Inventario actualizado.` });
             setCart([]);
-            setSelectedSaleDate(undefined); // Reset selected date
+            setSelectedSaleDate(undefined); 
             fetchPageData(); 
         } else {
-            let errorDesc = result.error || "Failed to process sale.";
+            let errorDesc = result.error || "Error al procesar la venta.";
             if (result.unavailableItems && result.unavailableItems.length > 0) {
-                errorDesc += " Unavailable: " + result.unavailableItems.map(i => `${i.name} (only ${i.availableStock} left)`).join(', ');
+                errorDesc += " No disponibles: " + result.unavailableItems.map(i => `${i.name} (solo quedan ${i.availableStock})`).join(', ');
             }
-            toast({ title: "Sale Failed", description: errorDesc, variant: "destructive" });
+            toast({ title: "Venta Fallida", description: errorDesc, variant: "destructive" });
             fetchPageData(); 
         }
     });
@@ -177,20 +177,20 @@ export default function SalesPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <PageTitle title="Sales Registration" />
+      <PageTitle title="Registro de Ventas" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle>Add Products to Sale</CardTitle>
-            <CardDescription>Select products and quantities to add to the current sale.</CardDescription>
+            <CardTitle>Añadir Productos a la Venta</CardTitle>
+            <CardDescription>Selecciona productos y cantidades para añadir a la venta actual.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="product">Product</Label>
+              <Label htmlFor="product">Producto</Label>
               {isLoadingProducts ? <Loader2 className="h-5 w-5 animate-spin mt-2" /> : (
                 <Select value={selectedProductId} onValueChange={setSelectedProductId} disabled={isPending}>
                   <SelectTrigger id="product">
-                    <SelectValue placeholder="Select a product" />
+                    <SelectValue placeholder="Selecciona un producto" />
                   </SelectTrigger>
                   <SelectContent>
                     {products.map(product => (
@@ -199,14 +199,14 @@ export default function SalesPage() {
                       </SelectItem>
                     ))}
                       {products.length === 0 && !isLoadingProducts && (
-                      <SelectItem value="no-products" disabled>No products available or in stock.</SelectItem>
+                      <SelectItem value="no-products" disabled>No hay productos disponibles o en stock.</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
               )}
             </div>
             <div>
-              <Label htmlFor="quantity">Quantity</Label>
+              <Label htmlFor="quantity">Cantidad</Label>
               <Input
                 id="quantity"
                 type="number"
@@ -217,7 +217,7 @@ export default function SalesPage() {
               />
             </div>
             <Button onClick={handleAddToCart} disabled={isPending || isLoadingProducts || !selectedProductId || quantity <= 0} className="w-full">
-              <PlusCircle className="mr-2 h-4 w-4" /> Add to Cart
+              <PlusCircle className="mr-2 h-4 w-4" /> Añadir al Carrito
             </Button>
           </CardContent>
         </Card>
@@ -225,19 +225,19 @@ export default function SalesPage() {
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5 text-primary" /> Current Sale
+              <ShoppingCart className="h-5 w-5 text-primary" /> Venta Actual
             </CardTitle>
-            <CardDescription>Review items before completing the sale.</CardDescription>
+            <CardDescription>Revisa los artículos antes de completar la venta.</CardDescription>
           </CardHeader>
           <CardContent className="max-h-96 overflow-y-auto">
             {cart.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">Cart is empty</p>
+              <p className="text-muted-foreground text-center py-4">El carrito está vacío</p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead className="text-center">Qty</TableHead>
+                    <TableHead>Artículo</TableHead>
+                    <TableHead className="text-center">Cant.</TableHead>
                     <TableHead className="text-right">Subtotal</TableHead>
                     <TableHead className="text-right"></TableHead>
                   </TableRow>
@@ -271,7 +271,7 @@ export default function SalesPage() {
           {cart.length > 0 && (
             <CardFooter className="flex flex-col gap-2 pt-4 border-t">
                <div className="w-full space-y-2 mb-2">
-                <Label htmlFor="sale-date">Sale Date (Optional)</Label>
+                <Label htmlFor="sale-date">Fecha de Venta (Opcional)</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -284,7 +284,7 @@ export default function SalesPage() {
                       disabled={isPending}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {selectedSaleDate ? format(selectedSaleDate, "PPP") : <span>Pick a date (defaults to now)</span>}
+                      {selectedSaleDate ? format(selectedSaleDate, "PPP", { locale: es }) : <span>Elige una fecha (defecto: ahora)</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
@@ -294,6 +294,7 @@ export default function SalesPage() {
                       onSelect={setSelectedSaleDate}
                       initialFocus
                       disabled={isPending}
+                      locale={es}
                     />
                   </PopoverContent>
                 </Popover>
@@ -304,7 +305,7 @@ export default function SalesPage() {
               </div>
               <Button onClick={handleProcessSale} className="w-full mt-2" disabled={isPending || isLoadingProducts}>
                 {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
-                Process Sale
+                Procesar Venta
               </Button>
             </CardFooter>
           )}
@@ -314,9 +315,9 @@ export default function SalesPage() {
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <History className="h-5 w-5 text-primary" /> Sales History
+            <History className="h-5 w-5 text-primary" /> Historial de Ventas
           </CardTitle>
-          <CardDescription>A log of all completed sales.</CardDescription>
+          <CardDescription>Un registro de todas las ventas completadas.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoadingSalesHistory ? (
@@ -324,21 +325,21 @@ export default function SalesPage() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : salesHistory.length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">No sales recorded yet.</p>
+            <p className="text-muted-foreground text-center py-4">Aún no hay ventas registradas.</p>
           ) : (
             <div className="rounded-lg border shadow-sm overflow-hidden max-h-96 overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-center">Items Sold</TableHead>
-                    <TableHead className="text-right">Total Amount</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead className="text-center">Artículos Vendidos</TableHead>
+                    <TableHead className="text-right">Monto Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {salesHistory.map((sale) => (
                     <TableRow key={sale.id}>
-                      <TableCell>{format(new Date(sale.saleDate), "PPp")}</TableCell>
+                      <TableCell>{format(new Date(sale.saleDate), "PPp", { locale: es })}</TableCell>
                       <TableCell className="text-center">
                         {sale.items.reduce((sum, item) => sum + item.quantity, 0)}
                       </TableCell>

@@ -32,9 +32,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
+const currencyFormatter = new Intl.NumberFormat('es-CO', { // Using Colombian pesos
   style: 'currency',
-  currency: 'USD',
+  currency: 'COP',
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
@@ -44,7 +44,7 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(""); // Mantener por si se añade búsqueda en el futuro
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -55,8 +55,8 @@ export default function ProductsPage() {
       setProducts(data);
     } catch (error: any) {
       toast({ 
-        title: "Error Fetching Products", 
-        description: error.message || "Could not load product data. Check server console for details.", 
+        title: "Error al Cargar Productos", 
+        description: error.message || "No se pudieron cargar los datos de los productos. Revisa la consola del servidor.", 
         variant: "destructive" 
       });
     }
@@ -81,10 +81,10 @@ export default function ProductsPage() {
     startTransition(async () => {
       const result = await deleteProduct(productId);
       if (result.success) {
-        toast({ title: "Product Deleted", description: "The product has been successfully deleted." });
-        fetchProducts(); // Refresh list
+        toast({ title: "Producto Eliminado", description: "El producto ha sido eliminado exitosamente." });
+        fetchProducts(); 
       } else {
-        toast({ title: "Error", description: result.error || "Failed to delete product.", variant: "destructive" });
+        toast({ title: "Error", description: result.error || "Error al eliminar producto.", variant: "destructive" });
       }
     });
   };
@@ -98,9 +98,9 @@ export default function ProductsPage() {
     }
     
     if (result.success) {
-      fetchProducts(); // Refresh list
+      fetchProducts(); 
     }
-    return result; // This will be handled by ProductForm for toast messages
+    return result; 
   };
 
   const filteredProducts = products.filter(product =>
@@ -110,18 +110,13 @@ export default function ProductsPage() {
 
   const getCategoryBadgeVariant = (category: Product["category"]) => {
     switch (category) {
-      case "Drinks":
+      case "Bebidas":
         return "default";
-      case "Food":
+      case "Alimentos":
         return "secondary";
-      case "Merchandise":
+      case "Mercancía":
           return "outline";
       default:
-        // Fallback for categories like "Bolsa de Café" or "Aji" if they still exist
-        // or if new categories are added without explicit variants here.
-        const lowerCategory = category.toLowerCase();
-        if (lowerCategory.includes("coffee") || lowerCategory.includes("café")) return "default";
-        if (lowerCategory.includes("food") || lowerCategory.includes("aji")) return "secondary";
         return "outline";
     }
   };
@@ -130,10 +125,10 @@ export default function ProductsPage() {
   return (
     <div className="p-6">
       <PageTitle 
-        title="Product Management" 
+        title="Gestión de Productos" 
         actions={
           <Button onClick={handleAddProduct} className="bg-primary hover:bg-primary/90">
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Product
+            <PlusCircle className="mr-2 h-4 w-4" /> Añadir Producto
           </Button>
         } 
       />
@@ -173,7 +168,7 @@ export default function ProductsPage() {
                   <div className="flex items-center">
                      <DollarSign className="h-4 w-4 mr-1.5 text-muted-foreground"/>
                      <div>
-                        <p className="text-xs text-muted-foreground">Price</p>
+                        <p className="text-xs text-muted-foreground">Precio</p>
                         <p className="font-semibold">{currencyFormatter.format(product.price)}</p>
                      </div>
                   </div>
@@ -193,7 +188,7 @@ export default function ProductsPage() {
                     className="flex-1 text-xs" 
                     disabled={isPending}
                   >
-                    <Edit className="mr-1 h-4 w-4" /> Edit
+                    <Edit className="mr-1 h-4 w-4" /> Editar
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -202,26 +197,26 @@ export default function ProductsPage() {
                         size="sm" 
                         className="text-destructive hover:bg-destructive/20 hover:text-destructive focus-visible:ring-destructive w-9 h-9 p-0 flex items-center justify-center" 
                         disabled={isPending}
-                        aria-label="Delete product"
+                        aria-label="Eliminar producto"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete the product "{product.name}".
+                          Esta acción no se puede deshacer. Esto eliminará permanentemente el producto "{product.name}".
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => handleDeleteProduct(product.id)}
                           disabled={isPending}
                           className="bg-destructive hover:bg-destructive/90"
                         >
-                          {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Delete"}
+                          {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Eliminar"}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -231,7 +226,7 @@ export default function ProductsPage() {
             ))
           ) : (
             <div className="text-center h-24 col-span-full flex items-center justify-center">
-               {searchTerm ? `No products found for "${searchTerm}".` : "No products found. Try adding some!"}
+               {searchTerm ? `No se encontraron productos para "${searchTerm}".` : "No se encontraron productos. ¡Intenta añadir algunos!"}
             </div>
           )}
         </div>
@@ -240,9 +235,9 @@ export default function ProductsPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
+            <DialogTitle>{editingProduct ? "Editar Producto" : "Añadir Nuevo Producto"}</DialogTitle>
             <DialogDescription>
-              {editingProduct ? "Update the details of this product." : "Fill in the details for the new product."}
+              {editingProduct ? "Actualiza los detalles de este producto." : "Completa los detalles para el nuevo producto."}
             </DialogDescription>
           </DialogHeader>
           <ProductForm

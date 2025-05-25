@@ -2,46 +2,42 @@
 // src/app/products/actions.ts
 "use server";
 
-import { suggestProductCategory, SuggestProductCategoryInput, SuggestProductCategoryOutput } from "@/ai/flows/suggest-product-category";
+import { suggestProductCategory, type SuggestProductCategoryInput, type SuggestProductCategoryOutput } from "@/ai/flows/suggest-product-category";
 import { z } from "zod";
 import type { Product, ProductCategory } from "@/lib/types";
-import { productCategories } from "@/lib/types"; // Changed from const to type import
-import { db } from "@/lib/firebase"; // Changed from getDb
+import { productCategories } from "@/lib/types"; 
+import { db } from "@/lib/firebase"; 
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
 
 const ProductSchema = z.object({
-  id: z.string().optional(), // Optional for new products
-  name: z.string().min(2, "Product name must be at least 2 characters"),
-  category: z.enum(productCategories),
-  price: z.number().min(0.01, "Price must be positive"),
-  stock: z.number().int().min(0, "Stock cannot be negative"),
-  imageUrl: z.string().url().optional().or(z.literal('')),
+  id: z.string().optional(), 
+  name: z.string().min(2, "El nombre del producto debe tener al menos 2 caracteres"),
+  category: z.enum(productCategories as [ProductCategory, ...ProductCategory[]], { required_error: "La categoría es obligatoria"}),
+  price: z.number().min(0.01, "El precio debe ser positivo"),
+  stock: z.number().int().min(0, "El stock no puede ser negativo"),
+  imageUrl: z.string().url("Debe ser una URL válida").optional().or(z.literal('')),
 });
 
 export type ProductFormInput = z.infer<typeof ProductSchema>;
 
 export async function getProducts(): Promise<Product[]> {
   try {
-    // 'db' is now directly available from the import
     const productsCollection = collection(db, 'products');
     const productSnapshot = await getDocs(productsCollection);
     const productList = productSnapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data() as Omit<Product, 'id'> // Cast data and omit 'id'
+      ...doc.data() as Omit<Product, 'id'> 
     }));
     return productList;
-  } catch (error: any) { // Added :any to access error.code
-    let errorMessage = "Failed to fetch products. Please check server logs for details.";
+  } catch (error: any) { 
+    let errorMessage = "Error al obtener productos. Revisa los logs del servidor.";
     if (error.code === 'permission-denied') {
-      errorMessage = "Firestore permission denied. Please check your security rules in the Firebase console.";
-      console.error("Firestore permission denied while fetching products. Original error:", error);
+      errorMessage = "Permiso denegado en Firestore. Revisa tus reglas de seguridad en la consola de Firebase.";
+      console.error("Permiso denegado en Firestore al obtener productos. Error original:", error);
     } else {
-      console.error("Error fetching products:", error);
+      console.error("Error al obtener productos:", error);
     }
-    // For a better UX, especially if this function were called directly from a component
-    // without a robust error handling layer, returning an object with an error field
-    // might be preferable. However, throwing here is consistent with how ProductsPage handles it.
     throw new Error(errorMessage);
   }
 }
@@ -53,8 +49,6 @@ export async function addProduct(data: ProductFormInput): Promise<{ success: boo
   }
 
   try {
-    // 'db' is now directly available from the import
-    // Prepare data to be added to Firestore
     const productData = {
       name: validation.data.name,
       category: validation.data.category,
@@ -64,16 +58,15 @@ export async function addProduct(data: ProductFormInput): Promise<{ success: boo
     };
 
     const docRef = await addDoc(collection(db, 'products'), productData);
-
-    // Revalidate the products page to show the new product
     revalidatePath('/products');
+    revalidatePath('/'); // Revalidate dashboard as well
 
     return { success: true, product: { id: docRef.id, ...productData as Omit<Product, 'id'> } };
   } catch (e: any) {
-    console.error("Error adding document: ", e);
-    let errorMessage = "Failed to add product.";
+    console.error("Error al añadir documento: ", e);
+    let errorMessage = "Error al añadir producto.";
     if (e.code === 'permission-denied') {
-      errorMessage = "Firestore permission denied. Please check your security rules.";
+      errorMessage = "Permiso denegado en Firestore. Revisa tus reglas de seguridad.";
     }
     return { success: false, error: errorMessage };
   }
@@ -86,15 +79,13 @@ export async function updateProduct(id: string, data: ProductFormInput): Promise
   }
 
   try {
-    // 'db' is now directly available from the import
     const productRef = doc(db, 'products', id);
     const productDoc = await getDoc(productRef);
 
     if (!productDoc.exists()) {
-      return { success: false, error: "Product not found" };
+      return { success: false, error: "Producto no encontrado" };
     }
 
-    // Prepare data for update
     const updatedData = {
       name: validation.data.name,
       category: validation.data.category,
@@ -104,20 +95,18 @@ export async function updateProduct(id: string, data: ProductFormInput): Promise
     };
 
     await updateDoc(productRef, updatedData);
-
-    // Revalidate the products page to show the updated product
     revalidatePath('/products');
+    revalidatePath('/'); // Revalidate dashboard as well
 
-    // Fetch the updated document to return the full product data
     const updatedProductDoc = await getDoc(productRef);
     const updatedProduct = { id: updatedProductDoc.id, ...updatedProductDoc.data() as Omit<Product, 'id'> };
 
     return { success: true, product: updatedProduct };
   } catch (e: any) {
-    console.error("Error updating document: ", e);
-    let errorMessage = "Failed to update product.";
+    console.error("Error al actualizar documento: ", e);
+    let errorMessage = "Error al actualizar producto.";
     if (e.code === 'permission-denied') {
-      errorMessage = "Firestore permission denied. Please check your security rules.";
+      errorMessage = "Permiso denegado en Firestore. Revisa tus reglas de seguridad.";
     }
     return { success: false, error: errorMessage };
   }
@@ -125,19 +114,16 @@ export async function updateProduct(id: string, data: ProductFormInput): Promise
 
 export async function deleteProduct(id: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // 'db' is now directly available from the import
     const productRef = doc(db, 'products', id);
     await deleteDoc(productRef);
-
-    // Revalidate the products page to remove the deleted product
     revalidatePath('/products');
-
+    revalidatePath('/'); // Revalidate dashboard as well
     return { success: true };
   } catch (e: any) {
-    console.error("Error deleting document: ", e);
-    let errorMessage = "Failed to delete product.";
+    console.error("Error al eliminar documento: ", e);
+    let errorMessage = "Error al eliminar producto.";
     if (e.code === 'permission-denied') {
-      errorMessage = "Firestore permission denied. Please check your security rules.";
+      errorMessage = "Permiso denegado en Firestore. Revisa tus reglas de seguridad.";
     }
     return { success: false, error: errorMessage };
   }
@@ -145,22 +131,17 @@ export async function deleteProduct(id: string): Promise<{ success: boolean; err
 
 export async function handleSuggestCategory(productName: string): Promise<{ category?: ProductCategory; error?: string }> {
   if (!productName || productName.trim().length < 2) {
-    return { error: "Product name must be at least 2 characters long." };
+    return { error: "El nombre del producto debe tener al menos 2 caracteres." };
   }
   try {
     const input: SuggestProductCategoryInput = { productName };
     const result: SuggestProductCategoryOutput = await suggestProductCategory(input);
-    // Ensure the suggested category is one of our valid types
     if (productCategories.includes(result.category as ProductCategory)) {
       return { category: result.category as ProductCategory };
     }
-    // If AI suggests an unknown category, default to a sensible choice or handle as error
-    // For now, let's assume the AI will stick to the enum or we take its suggestion.
-    // If the AI can return values outside productCategories, this part needs more robust handling.
-    // Based on the prompt for suggestProductCategory, it should only return from the given options.
-    return { category: result.category as ProductCategory };
+    return { category: result.category as ProductCategory }; // Assume AI sticks to enum
   } catch (error) {
-    console.error("AI Category Suggestion Error:", error);
-    return { error: "Failed to suggest category. Please select manually." };
+    console.error("Error en sugerencia de categoría por IA:", error);
+    return { error: "Error al sugerir categoría. Por favor, selecciona manualmente." };
   }
 }

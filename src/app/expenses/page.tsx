@@ -6,7 +6,7 @@ import { PageTitle } from "@/components/shared/page-title";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea"; // Not used for description, but might be if descriptions get long
+// import { Textarea } from "@/components/ui/textarea"; // Not used currently for description
 import {
   Table,
   TableBody,
@@ -24,11 +24,12 @@ import {
   DialogFooter,
   DialogClose
 } from "@/components/ui/dialog";
-import { PlusCircle, Edit, Trash2, Loader2, Calendar as CalendarIcon, Receipt } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Loader2, Calendar as CalendarIcon } from "lucide-react";
 import type { Expense, ExpenseCategory } from "@/lib/types";
 import { expenseCategories } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { es } from 'date-fns/locale';
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -47,9 +48,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
+const currencyFormatter = new Intl.NumberFormat('es-CO', {
   style: 'currency',
-  currency: 'USD',
+  currency: 'COP',
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
@@ -61,7 +62,6 @@ export default function ExpensesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   
-  // Form state
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState<number | string>("");
   const [category, setCategory] = useState<ExpenseCategory | undefined>(undefined);
@@ -77,8 +77,8 @@ export default function ExpensesPage() {
       setExpenses(data);
     } catch (error: any) {
       toast({
-        title: "Error Fetching Expenses",
-        description: error.message || "Could not load expense data.",
+        title: "Error al Cargar Gastos",
+        description: error.message || "No se pudieron cargar los datos de gastos.",
         variant: "destructive"
       });
     }
@@ -107,12 +107,12 @@ export default function ExpensesPage() {
 
   const handleSubmitExpense = async () => {
     if (!description || !amount || !category || !expenseDate) {
-      toast({ title: "Invalid Input", description: "Please fill in all required fields.", variant: "destructive" });
+      toast({ title: "Entrada Inválida", description: "Por favor, completa todos los campos requeridos.", variant: "destructive" });
       return;
     }
     const numericAmount = parseFloat(String(amount));
     if (isNaN(numericAmount) || numericAmount <= 0) {
-       toast({ title: "Invalid Amount", description: "Amount must be a positive number.", variant: "destructive" });
+       toast({ title: "Monto Inválido", description: "El monto debe ser un número positivo.", variant: "destructive" });
        return;
     }
 
@@ -127,11 +127,11 @@ export default function ExpensesPage() {
       }
 
       if (result.success) {
-        toast({ title: editingExpense ? "Expense Updated" : "Expense Added", description: `Entry for ${expenseData.description} processed.` });
+        toast({ title: editingExpense ? "Gasto Actualizado" : "Gasto Añadido", description: `Entrada para ${expenseData.description} procesada.` });
         fetchExpenses();
         setIsDialogOpen(false);
       } else {
-        toast({ title: "Error", description: result.error || "An unexpected error occurred.", variant: "destructive" });
+        toast({ title: "Error", description: result.error || "Ocurrió un error inesperado.", variant: "destructive" });
       }
     });
   };
@@ -140,10 +140,10 @@ export default function ExpensesPage() {
      startTransition(async () => {
         const result = await deleteExpense(expenseId);
         if (result.success) {
-          toast({ title: "Expense Deleted", description: "The expense entry has been deleted." });
+          toast({ title: "Gasto Eliminado", description: "La entrada de gasto ha sido eliminada." });
           fetchExpenses();
         } else {
-          toast({ title: "Error Deleting", description: result.error || "Failed to delete expense entry.", variant: "destructive" });
+          toast({ title: "Error al Eliminar", description: result.error || "Error al eliminar la entrada de gasto.", variant: "destructive" });
         }
      });
   }
@@ -152,10 +152,10 @@ export default function ExpensesPage() {
   return (
     <div className="p-6">
       <PageTitle 
-        title="Expenses" 
+        title="Gastos" 
         actions={
           <Button onClick={() => handleOpenDialog()} className="bg-primary hover:bg-primary/90">
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Expense Entry
+            <PlusCircle className="mr-2 h-4 w-4" /> Añadir Gasto
           </Button>
         } 
       />
@@ -169,18 +169,18 @@ export default function ExpensesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right w-[120px]">Actions</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Descripción</TableHead>
+                <TableHead>Categoría</TableHead>
+                <TableHead className="text-right">Monto</TableHead>
+                <TableHead className="text-right w-[120px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {expenses.length > 0 ? (
                 expenses.map((expense) => (
                   <TableRow key={expense.id}>
-                    <TableCell>{format(new Date(expense.expenseDate), "PPP")}</TableCell>
+                    <TableCell>{format(new Date(expense.expenseDate), "PPP", { locale: es })}</TableCell>
                     <TableCell className="font-medium">{expense.description}</TableCell>
                     <TableCell><Badge variant="secondary">{expense.category}</Badge></TableCell>
                     <TableCell className="text-right text-red-600 font-semibold">
@@ -198,19 +198,19 @@ export default function ExpensesPage() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete the expense entry for "{expense.description}".
+                              Esta acción no se puede deshacer. Esto eliminará permanentemente la entrada de gasto para "{expense.description}".
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => handleDeleteConfirmation(expense.id)}
                               disabled={isPending}
                               className="bg-destructive hover:bg-destructive/90"
                             >
-                              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Delete"}
+                              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Eliminar"}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -221,7 +221,7 @@ export default function ExpensesPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center h-24">
-                    No expense entries recorded yet.
+                    Aún no hay entradas de gastos registradas.
                   </TableCell>
                 </TableRow>
               )}
@@ -233,17 +233,17 @@ export default function ExpensesPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingExpense ? "Edit Expense Entry" : "Add New Expense Entry"}</DialogTitle>
+            <DialogTitle>{editingExpense ? "Editar Entrada de Gasto" : "Añadir Nueva Entrada de Gasto"}</DialogTitle>
             <DialogDescription>
-              {editingExpense ? "Update the details of this expense entry." : "Record a new expense."}
+              {editingExpense ? "Actualiza los detalles de esta entrada de gasto." : "Registra un nuevo gasto."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="expense-description">Description</Label>
+              <Label htmlFor="expense-description">Descripción</Label>
               <Input 
                 id="expense-description" 
-                placeholder="e.g., Coffee bean order, Electricity bill"
+                placeholder="Ej: Pedido de granos de café, Factura de luz"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={isPending}
@@ -251,19 +251,19 @@ export default function ExpensesPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="expense-amount">Amount ($)</Label>
+                <Label htmlFor="expense-amount">Monto ($)</Label>
                 <Input 
                   id="expense-amount" 
                   type="number"
                   step="0.01"
-                  placeholder="0.00"
+                  placeholder="0"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   disabled={isPending}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="expense-date">Date</Label>
+                <Label htmlFor="expense-date">Fecha</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -276,7 +276,7 @@ export default function ExpensesPage() {
                       disabled={isPending}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {expenseDate ? format(expenseDate, "PPP") : <span>Pick a date</span>}
+                      {expenseDate ? format(expenseDate, "PPP", { locale: es }) : <span>Elige una fecha</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
@@ -286,16 +286,17 @@ export default function ExpensesPage() {
                       onSelect={setExpenseDate}
                       initialFocus
                       disabled={isPending}
+                      locale={es}
                     />
                   </PopoverContent>
                 </Popover>
               </div>
             </div>
              <div className="space-y-2">
-              <Label htmlFor="expense-category">Category</Label>
+              <Label htmlFor="expense-category">Categoría</Label>
                 <Select value={category} onValueChange={(value) => setCategory(value as ExpenseCategory)} disabled={isPending}>
                   <SelectTrigger id="expense-category">
-                    <SelectValue placeholder="Select a category" />
+                    <SelectValue placeholder="Selecciona una categoría" />
                   </SelectTrigger>
                   <SelectContent>
                     {expenseCategories.map(cat => (
@@ -309,11 +310,11 @@ export default function ExpensesPage() {
           </div>
           <DialogFooter>
              <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={isPending}>Cancel</Button>
+              <Button type="button" variant="outline" disabled={isPending}>Cancelar</Button>
             </DialogClose>
             <Button type="submit" onClick={handleSubmitExpense} disabled={isPending}>
               {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {editingExpense ? "Save Changes" : "Add Expense"}
+              {editingExpense ? "Guardar Cambios" : "Añadir Gasto"}
             </Button>
           </DialogFooter>
         </DialogContent>

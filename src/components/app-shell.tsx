@@ -16,6 +16,7 @@ import {
   SidebarTrigger,
   SidebarInset,
   useSidebar,
+  SidebarContext, 
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -29,7 +30,7 @@ import {
   Menu,
   Landmark,
   LogOut,
-  Receipt, // Added Receipt icon
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -53,11 +54,11 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard", tooltip: "Dashboard" },
-  { href: "/products", icon: Coffee, label: "Products", tooltip: "Manage Products" },
-  { href: "/sales", icon: ShoppingCart, label: "Sales", tooltip: "Record Sales" },
-  { href: "/inventory", icon: Archive, label: "Inventory", tooltip: "Adjust Inventory" },
-  { href: "/income", icon: Landmark, label: "Other Income", tooltip: "Track Other Income" },
-  { href: "/expenses", icon: Receipt, label: "Expenses", tooltip: "Track Expenses" }, // New expense item
+  { href: "/products", icon: Coffee, label: "Productos", tooltip: "Gestionar Productos" },
+  { href: "/sales", icon: ShoppingCart, label: "Ventas", tooltip: "Registrar Ventas" },
+  { href: "/inventory", icon: Archive, label: "Inventario", tooltip: "Ajustar Inventario" },
+  { href: "/income", icon: Landmark, label: "Otros Ingresos", tooltip: "Rastrear Otros Ingresos" },
+  { href: "/expenses", icon: Receipt, label: "Gastos", tooltip: "Rastrear Gastos" },
 ];
 
 function AppSpecificSidebarHeader() {
@@ -133,25 +134,25 @@ function AppShellInternal({ children }: { children: ReactNode }) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 w-full justify-start p-2 group-data-[collapsible=icon]:justify-center">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src="https://placehold.co/100x100.png" alt="User Avatar" data-ai-hint="user avatar" />
+                  <AvatarImage src="https://placehold.co/100x100.png" alt="Avatar de Usuario" data-ai-hint="user avatar" />
                   <AvatarFallback>BB</AvatarFallback>
                 </Avatar>
                 <div className="group-data-[collapsible=icon]:hidden">
-                  <p className="text-sm font-medium">BrewBooks User</p>
-                  <p className="text-xs text-muted-foreground">admin@brewbooks.com</p>
+                  <p className="text-sm font-medium">Usuario BrewBooks</p>
+                  <p className="text-xs text-muted-foreground">admin@brewbooks.co</p>
                 </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="right" align="start" className="w-56">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
+                <span>Configuración</span>
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
+                <span>Cerrar Sesión</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -161,6 +162,7 @@ function AppShellInternal({ children }: { children: ReactNode }) {
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 px-6 backdrop-blur-md md:justify-end">
            <SidebarTrigger className="md:hidden">
               <Menu className="h-6 w-6" />
+              <span className="sr-only">Alternar Menú</span>
            </SidebarTrigger>
         </header>
         <div className="flex-1 overflow-y-auto">

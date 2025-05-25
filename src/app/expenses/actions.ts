@@ -10,15 +10,14 @@ import { revalidatePath } from 'next/cache';
 
 const ExpenseSchema = z.object({
   id: z.string().optional(),
-  description: z.string().min(1, "Description is required"),
-  amount: z.number().positive("Amount must be a positive number"),
-  category: z.enum(expenseCategories, { required_error: "Category is required" }),
-  expenseDate: z.date({ required_error: "Expense date is required" }),
+  description: z.string().min(1, "La descripción es obligatoria"),
+  amount: z.number().positive("El monto debe ser un número positivo"),
+  category: z.enum(expenseCategories as [ExpenseCategory, ...ExpenseCategory[]], { required_error: "La categoría es obligatoria" }),
+  expenseDate: z.date({ required_error: "La fecha del gasto es obligatoria" }),
 });
 
 export type ExpenseFormInput = Omit<z.infer<typeof ExpenseSchema>, "id">;
 
-// Helper to convert Firestore Timestamps to ISO strings for dates
 const convertTimestampsToISO = (data: any) : any => {
   if (data && data.expenseDate instanceof Timestamp) {
     return { ...data, expenseDate: data.expenseDate.toDate().toISOString() };
@@ -38,8 +37,8 @@ export async function getExpenses(): Promise<Expense[]> {
     });
     return expenseList;
   } catch (error: any) {
-    console.error("Error fetching expenses:", error);
-    throw new Error(`Failed to fetch expenses. ${error.code === 'permission-denied' ? 'Firestore permission denied.' : ''}`);
+    console.error("Error al obtener gastos:", error);
+    throw new Error(`Error al obtener gastos. ${error.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}`);
   }
 }
 
@@ -56,13 +55,12 @@ export async function addExpense(data: ExpenseFormInput): Promise<{ success: boo
     };
     const docRef = await addDoc(collection(db, 'expenses'), expenseData);
     revalidatePath('/expenses');
-    // Also revalidate dashboard if expenses affect it
     revalidatePath('/'); 
     const newExpense = { id: docRef.id, ...validation.data, expenseDate: validation.data.expenseDate.toISOString() };
     return { success: true, expense: newExpense as Expense };
   } catch (e: any) {
-    console.error("Error adding expense document: ", e);
-    return { success: false, error: `Failed to add expense. ${e.code === 'permission-denied' ? 'Firestore permission denied.' : ''}` };
+    console.error("Error al añadir documento de gasto: ", e);
+    return { success: false, error: `Error al añadir gasto. ${e.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}` };
   }
 }
 
@@ -77,7 +75,7 @@ export async function updateExpense(id: string, data: ExpenseFormInput): Promise
     const expenseDoc = await getDoc(expenseRef);
 
     if (!expenseDoc.exists()) {
-      return { success: false, error: "Expense entry not found" };
+      return { success: false, error: "Entrada de gasto no encontrada" };
     }
 
     const updatedData = {
@@ -91,8 +89,8 @@ export async function updateExpense(id: string, data: ExpenseFormInput): Promise
     const updatedExpense = { id, ...validation.data, expenseDate: validation.data.expenseDate.toISOString() };
     return { success: true, expense: updatedExpense as Expense };
   } catch (e: any) {
-    console.error("Error updating expense document: ", e);
-    return { success: false, error: `Failed to update expense. ${e.code === 'permission-denied' ? 'Firestore permission denied.' : ''}` };
+    console.error("Error al actualizar documento de gasto: ", e);
+    return { success: false, error: `Error al actualizar gasto. ${e.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}` };
   }
 }
 
@@ -104,7 +102,7 @@ export async function deleteExpense(id: string): Promise<{ success: boolean; err
     revalidatePath('/');
     return { success: true };
   } catch (e: any) {
-    console.error("Error deleting expense document: ", e);
-    return { success: false, error: `Failed to delete expense. ${e.code === 'permission-denied' ? 'Firestore permission denied.' : ''}` };
+    console.error("Error al eliminar documento de gasto: ", e);
+    return { success: false, error: `Error al eliminar gasto. ${e.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}` };
   }
 }

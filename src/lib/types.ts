@@ -1,6 +1,6 @@
 
-export type ProductCategory = "Drinks" | "Food" | "Merchandise";
-export const productCategories: ProductCategory[] = ["Drinks", "Food", "Merchandise"];
+export type ProductCategory = "Bebidas" | "Alimentos" | "Mercancía";
+export const productCategories: ProductCategory[] = ["Bebidas", "Alimentos", "Mercancía"];
 
 export interface Product {
   id: string;
@@ -41,8 +41,8 @@ export interface OtherIncome {
   incomeDate: string; // Store as ISO string or Firestore Timestamp
 }
 
-export type ExpenseCategory = "Supplies" | "Utilities" | "Rent" | "Marketing" | "Wages" | "Other";
-export const expenseCategories: ExpenseCategory[] = ["Supplies", "Utilities", "Rent", "Marketing", "Wages", "Other"];
+export type ExpenseCategory = "Suministros" | "Servicios Públicos" | "Arriendo" | "Publicidad" | "Salarios" | "Otros";
+export const expenseCategories: ExpenseCategory[] = ["Suministros", "Servicios Públicos", "Arriendo", "Publicidad", "Salarios", "Otros"];
 
 export interface Expense {
   id: string;

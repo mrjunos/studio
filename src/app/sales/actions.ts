@@ -2,7 +2,7 @@
 "use server";
 
 import { z } from "zod";
-import type { Sale, SaleItem, Product } from "@/lib/types";
+import type { Sale, Product } from "@/lib/types"; // Removed SaleItem as it's part of Sale
 import { db } from "@/lib/firebase"; 
 import { collection, addDoc, doc, getDoc, writeBatch, Timestamp, increment, getDocs, query, orderBy } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
@@ -10,19 +10,17 @@ import { revalidatePath } from 'next/cache';
 const SaleItemSchema = z.object({
   productId: z.string(),
   productName: z.string(),
-  quantity: z.number().int().positive(),
-  priceAtSale: z.number().positive(),
+  quantity: z.number().int().positive("La cantidad debe ser un número entero positivo"),
+  priceAtSale: z.number().positive("El precio de venta debe ser positivo"),
 });
 
 const ProcessSaleInputSchema = z.object({
-  items: z.array(SaleItemSchema).min(1, "Cart cannot be empty."),
-  totalAmount: z.number().positive(),
-  // Sale date is now an optional parameter to the action, not part of this schema
+  items: z.array(SaleItemSchema).min(1, "El carrito no puede estar vacío."),
+  totalAmount: z.number().positive("El monto total debe ser positivo"),
 });
 
 export type CartItemForAction = z.infer<typeof SaleItemSchema>;
 
-// Helper to convert Firestore Timestamps to ISO strings for dates
 const convertSaleTimestampsToISO = (data: any): any => {
   if (data && data.saleDate instanceof Timestamp) {
     return { ...data, saleDate: data.saleDate.toDate().toISOString() };
@@ -31,19 +29,18 @@ const convertSaleTimestampsToISO = (data: any): any => {
 };
 
 export async function getSales(): Promise<Sale[]> {
-  const firestoreDb = db; 
   try {
-    const salesCollection = collection(firestoreDb, 'sales');
+    const salesCollection = collection(db, 'sales');
     const q = query(salesCollection, orderBy("saleDate", "desc"));
     const salesSnapshot = await getDocs(q);
-    const salesList = salesSnapshot.docs.map(doc => {
-      const data = doc.data();
-      return convertSaleTimestampsToISO({ id: doc.id, ...data }) as Sale;
+    const salesList = salesSnapshot.docs.map(docSnap => {
+      const data = docSnap.data();
+      return convertSaleTimestampsToISO({ id: docSnap.id, ...data }) as Sale;
     });
     return salesList;
   } catch (error: any) {
-    console.error("Error fetching sales:", error);
-    throw new Error(`Failed to fetch sales history. ${error.code === 'permission-denied' ? 'Firestore permission denied.' : ''}`);
+    console.error("Error al obtener ventas:", error);
+    throw new Error(`Error al obtener historial de ventas. ${error.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}`);
   }
 }
 
@@ -51,28 +48,24 @@ export async function getSales(): Promise<Sale[]> {
 export async function processSale(
   cartItems: CartItemForAction[],
   totalAmount: number,
-  customSaleDate?: Date // Optional custom sale date
+  customSaleDate?: Date 
 ): Promise<{ success: boolean; saleId?: string; error?: string; unavailableItems?: {productId: string, name: string, availableStock: number}[] }> {
   
-  const firestoreDb = db;
-  // Validate cartItems and totalAmount (core sale data)
-  // We don't include customSaleDate in this schema as it's an optional overlay to the core transaction logic.
   const validation = ProcessSaleInputSchema.safeParse({ items: cartItems, totalAmount });
   if (!validation.success) {
     return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
   }
 
   try {
-    const batch = writeBatch(firestoreDb);
+    const batch = writeBatch(db);
     const unavailableItems: {productId: string, name: string, availableStock: number}[] = [];
 
-    // Validate stock and prepare batch updates for products
     for (const item of cartItems) {
-      const productRef = doc(firestoreDb, 'products', item.productId);
+      const productRef = doc(db, 'products', item.productId);
       const productDoc = await getDoc(productRef);
 
       if (!productDoc.exists()) {
-        return { success: false, error: `Product ${item.productName} not found.` };
+        return { success: false, error: `Producto ${item.productName} no encontrado.` };
       }
       const productData = productDoc.data() as Product; 
       if (productData.stock < item.quantity) {
@@ -82,20 +75,18 @@ export async function processSale(
     }
 
     if (unavailableItems.length > 0) {
-      return { success: false, error: "One or more items have insufficient stock.", unavailableItems };
+      return { success: false, error: "Uno o más artículos tienen stock insuficiente.", unavailableItems };
     }
 
-    // Create sale record
     const saleData = {
       items: cartItems,
       totalAmount,
       saleDate: customSaleDate ? Timestamp.fromDate(customSaleDate) : Timestamp.now(),
     };
-    const salesCollectionRef = collection(firestoreDb, 'sales');
+    const salesCollectionRef = collection(db, 'sales');
     const newSaleRef = doc(salesCollectionRef); 
     batch.set(newSaleRef, saleData);
 
-    // Commit all operations
     await batch.commit();
 
     revalidatePath('/products'); 
@@ -105,10 +96,10 @@ export async function processSale(
     return { success: true, saleId: newSaleRef.id };
 
   } catch (e: any) {
-    console.error("Error processing sale: ", e);
-    let errorMessage = "Failed to process sale.";
+    console.error("Error al procesar venta: ", e);
+    let errorMessage = "Error al procesar la venta.";
     if (e.code === 'permission-denied') {
-      errorMessage = "Firestore permission denied. Please check your security rules.";
+      errorMessage = "Permiso denegado en Firestore. Revisa tus reglas de seguridad.";
     } else if (e.message.includes("stock") || e.message.includes("product")) { 
         errorMessage = e.message;
     }

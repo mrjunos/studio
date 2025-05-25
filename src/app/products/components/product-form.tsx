@@ -25,17 +25,17 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Lightbulb, Loader2, Save } from "lucide-react";
 import type { Product, ProductCategory } from "@/lib/types";
-import { productCategories } from "@/lib/types"; // Imported from types.ts
-import { ProductFormInput, handleSuggestCategory } from "../actions";
+import { productCategories } from "@/lib/types"; 
+import { type ProductFormInput, handleSuggestCategory } from "../actions";
 import { useState, useTransition } from "react";
 import Image from "next/image";
 
 const ProductFormSchema = z.object({
-  name: z.string().min(2, "Product name must be at least 2 characters"),
-  category: z.enum(productCategories, { required_error: "Category is required"}),
-  price: z.coerce.number().min(0.01, "Price must be positive"),
-  stock: z.coerce.number().int().min(0, "Stock cannot be negative"),
-  imageUrl: z.string().url("Must be a valid URL").optional().or(z.literal('')),
+  name: z.string().min(2, "El nombre del producto debe tener al menos 2 caracteres"),
+  category: z.enum(productCategories as [ProductCategory, ...ProductCategory[]], { required_error: "La categoría es obligatoria"}),
+  price: z.coerce.number().min(0.01, "El precio debe ser positivo"),
+  stock: z.coerce.number().int().min(0, "El stock no puede ser negativo"),
+  imageUrl: z.string().url("Debe ser una URL válida").optional().or(z.literal('')),
 });
 
 
@@ -68,14 +68,14 @@ export function ProductForm({ product, onSubmit, onClose }: ProductFormProps) {
       const result = await onSubmit(data);
       if (result.success) {
         toast({
-          title: product ? "Product Updated" : "Product Added",
-          description: `${data.name} has been successfully ${product ? 'updated' : 'added'}.`,
+          title: product ? "Producto Actualizado" : "Producto Añadido",
+          description: `${data.name} ha sido ${product ? 'actualizado' : 'añadido'} exitosamente.`,
         });
         onClose();
       } else {
         toast({
           title: "Error",
-          description: result.error || "An unexpected error occurred.",
+          description: result.error || "Ocurrió un error inesperado.",
           variant: "destructive",
         });
       }
@@ -86,8 +86,8 @@ export function ProductForm({ product, onSubmit, onClose }: ProductFormProps) {
     const productName = form.getValues("name");
     if (!productName) {
       toast({
-        title: "Missing Product Name",
-        description: "Please enter a product name to suggest a category.",
+        title: "Falta Nombre del Producto",
+        description: "Por favor, ingresa un nombre de producto para sugerir una categoría.",
         variant: "destructive",
       });
       return;
@@ -98,13 +98,13 @@ export function ProductForm({ product, onSubmit, onClose }: ProductFormProps) {
       if (result.category) {
         form.setValue("category", result.category, { shouldValidate: true });
         toast({
-          title: "Category Suggested",
-          description: `Suggested category: ${result.category}`,
+          title: "Categoría Sugerida",
+          description: `Categoría sugerida: ${result.category}`,
         });
       } else {
         toast({
-          title: "Suggestion Failed",
-          description: result.error || "Could not suggest a category.",
+          title: "Sugerencia Fallida",
+          description: result.error || "No se pudo sugerir una categoría.",
           variant: "destructive",
         });
       }
@@ -120,9 +120,9 @@ export function ProductForm({ product, onSubmit, onClose }: ProductFormProps) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Product Name</FormLabel>
+              <FormLabel>Nombre del Producto</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Latte, Croissant, Coffee Beans" {...field} />
+                <Input placeholder="Ej: Latte, Croissant, Bolsa de Café" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -133,12 +133,12 @@ export function ProductForm({ product, onSubmit, onClose }: ProductFormProps) {
           name="category"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category</FormLabel>
+              <FormLabel>Categoría</FormLabel>
               <div className="flex items-center gap-2">
                 <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
+                      <SelectValue placeholder="Selecciona una categoría" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -153,13 +153,13 @@ export function ProductForm({ product, onSubmit, onClose }: ProductFormProps) {
                   size="icon"
                   onClick={onSuggestCategory}
                   disabled={isSuggesting || isPending}
-                  aria-label="Suggest Category"
+                  aria-label="Sugerir Categoría"
                 >
                   {isSuggesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lightbulb className="h-4 w-4" />}
                 </Button>
               </div>
               <FormDescription>
-                Select the product category or use the lightbulb to get an AI suggestion.
+                Selecciona la categoría o usa el bombillo para una sugerencia IA.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -171,9 +171,9 @@ export function ProductForm({ product, onSubmit, onClose }: ProductFormProps) {
             name="price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Price ($)</FormLabel>
+                <FormLabel>Precio ($)</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                  <Input type="number" step="0.01" placeholder="0" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -184,7 +184,7 @@ export function ProductForm({ product, onSubmit, onClose }: ProductFormProps) {
             name="stock"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Current Stock</FormLabel>
+                <FormLabel>Stock Actual</FormLabel>
                 <FormControl>
                   <Input type="number" step="1" placeholder="0" {...field} />
                 </FormControl>
@@ -198,13 +198,13 @@ export function ProductForm({ product, onSubmit, onClose }: ProductFormProps) {
           name="imageUrl"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Image URL (Optional)</FormLabel>
+              <FormLabel>URL de Imagen (Opcional)</FormLabel>
               <FormControl>
-                <Input placeholder="https://example.com/image.png" {...field} />
+                <Input placeholder="https://ejemplo.com/imagen.png" {...field} />
               </FormControl>
               {currentImageUrl && (
                  <div className="mt-2 relative w-32 h-32 rounded-md overflow-hidden border">
-                    <Image src={currentImageUrl} alt="Product Preview" layout="fill" objectFit="cover" data-ai-hint="product image" />
+                    <Image src={currentImageUrl} alt="Vista Previa del Producto" layout="fill" objectFit="cover" data-ai-hint="product image" />
                  </div>
               )}
               <FormMessage />
@@ -213,11 +213,11 @@ export function ProductForm({ product, onSubmit, onClose }: ProductFormProps) {
         />
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
-            Cancel
+            Cancelar
           </Button>
           <Button type="submit" disabled={isPending || isSuggesting}>
             {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            {product ? "Save Changes" : "Add Product"}
+            {product ? "Guardar Cambios" : "Añadir Producto"}
           </Button>
         </div>
       </form>

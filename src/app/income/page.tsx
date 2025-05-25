@@ -28,6 +28,7 @@ import { PlusCircle, Edit, Trash2, Loader2, Calendar as CalendarIcon } from "luc
 import type { OtherIncome } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { es } from 'date-fns/locale';
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -44,9 +45,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
+const currencyFormatter = new Intl.NumberFormat('es-CO', {
   style: 'currency',
-  currency: 'USD',
+  currency: 'COP',
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
@@ -58,9 +59,8 @@ export default function IncomePage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingIncome, setEditingIncome] = useState<OtherIncome | null>(null);
   
-  // Form state
   const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState<number | string>(""); // Allow string for input flexibility
+  const [amount, setAmount] = useState<number | string>(""); 
   const [incomeDate, setIncomeDate] = useState<Date | undefined>(new Date());
 
   const [isPending, startTransition] = useTransition();
@@ -73,8 +73,8 @@ export default function IncomePage() {
       setIncomes(data);
     } catch (error: any) {
       toast({
-        title: "Error Fetching Income",
-        description: error.message || "Could not load income data.",
+        title: "Error al Cargar Ingresos",
+        description: error.message || "No se pudieron cargar los datos de ingresos.",
         variant: "destructive"
       });
     }
@@ -90,7 +90,7 @@ export default function IncomePage() {
     if (income) {
       setDescription(income.description);
       setAmount(income.amount);
-      setIncomeDate(new Date(income.incomeDate)); // Parse ISO string to Date
+      setIncomeDate(new Date(income.incomeDate)); 
     } else {
       setDescription("");
       setAmount("");
@@ -101,12 +101,12 @@ export default function IncomePage() {
 
   const handleSubmitIncome = async () => {
     if (!description || !amount || !incomeDate) {
-      toast({ title: "Invalid Input", description: "Please fill in all required fields.", variant: "destructive" });
+      toast({ title: "Entrada Inválida", description: "Por favor, completa todos los campos requeridos.", variant: "destructive" });
       return;
     }
     const numericAmount = parseFloat(String(amount));
     if (isNaN(numericAmount) || numericAmount <= 0) {
-       toast({ title: "Invalid Amount", description: "Amount must be a positive number.", variant: "destructive" });
+       toast({ title: "Monto Inválido", description: "El monto debe ser un número positivo.", variant: "destructive" });
        return;
     }
 
@@ -121,11 +121,11 @@ export default function IncomePage() {
       }
 
       if (result.success) {
-        toast({ title: editingIncome ? "Income Updated" : "Income Added", description: `Entry for ${incomeData.description} processed.` });
-        fetchIncomes(); // Refresh list
+        toast({ title: editingIncome ? "Ingreso Actualizado" : "Ingreso Añadido", description: `Entrada para ${incomeData.description} procesada.` });
+        fetchIncomes(); 
         setIsDialogOpen(false);
       } else {
-        toast({ title: "Error", description: result.error || "An unexpected error occurred.", variant: "destructive" });
+        toast({ title: "Error", description: result.error || "Ocurrió un error inesperado.", variant: "destructive" });
       }
     });
   };
@@ -134,10 +134,10 @@ export default function IncomePage() {
      startTransition(async () => {
         const result = await deleteOtherIncome(incomeId);
         if (result.success) {
-          toast({ title: "Income Deleted", description: "The income entry has been deleted." });
-          fetchIncomes(); // Refresh list
+          toast({ title: "Ingreso Eliminado", description: "La entrada de ingreso ha sido eliminada." });
+          fetchIncomes(); 
         } else {
-          toast({ title: "Error Deleting", description: result.error || "Failed to delete income entry.", variant: "destructive" });
+          toast({ title: "Error al Eliminar", description: result.error || "Error al eliminar la entrada de ingreso.", variant: "destructive" });
         }
      });
   }
@@ -146,10 +146,10 @@ export default function IncomePage() {
   return (
     <div className="p-6">
       <PageTitle 
-        title="Other Income" 
+        title="Otros Ingresos" 
         actions={
           <Button onClick={() => handleOpenDialog()} className="bg-primary hover:bg-primary/90">
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Income Entry
+            <PlusCircle className="mr-2 h-4 w-4" /> Añadir Ingreso
           </Button>
         } 
       />
@@ -163,17 +163,17 @@ export default function IncomePage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right w-[120px]">Actions</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Descripción</TableHead>
+                <TableHead className="text-right">Monto</TableHead>
+                <TableHead className="text-right w-[120px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {incomes.length > 0 ? (
                 incomes.map((income) => (
                   <TableRow key={income.id}>
-                    <TableCell>{format(new Date(income.incomeDate), "PPP")}</TableCell>
+                    <TableCell>{format(new Date(income.incomeDate), "PPP", { locale: es })}</TableCell>
                     <TableCell className="font-medium">{income.description}</TableCell>
                     <TableCell className="text-right text-green-600 font-semibold">
                       {currencyFormatter.format(income.amount)}
@@ -190,19 +190,19 @@ export default function IncomePage() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete the income entry for "{income.description}".
+                              Esta acción no se puede deshacer. Esto eliminará permanentemente la entrada de ingreso para "{income.description}".
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => handleDeleteConfirmation(income.id)}
                               disabled={isPending}
                               className="bg-destructive hover:bg-destructive/90"
                             >
-                              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Delete"}
+                              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Eliminar"}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -213,7 +213,7 @@ export default function IncomePage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center h-24">
-                    No other income entries recorded yet.
+                    Aún no hay otras entradas de ingresos registradas.
                   </TableCell>
                 </TableRow>
               )}
@@ -225,17 +225,17 @@ export default function IncomePage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingIncome ? "Edit Income Entry" : "Add New Income Entry"}</DialogTitle>
+            <DialogTitle>{editingIncome ? "Editar Entrada de Ingreso" : "Añadir Nueva Entrada de Ingreso"}</DialogTitle>
             <DialogDescription>
-              {editingIncome ? "Update the details of this income entry." : "Record a new source of other income."}
+              {editingIncome ? "Actualiza los detalles de esta entrada de ingreso." : "Registra una nueva fuente de otros ingresos."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="income-description">Description</Label>
+              <Label htmlFor="income-description">Descripción</Label>
               <Textarea 
                 id="income-description" 
-                placeholder="e.g., Event catering, Consulting fee"
+                placeholder="Ej: Catering de evento, Tarifa de consultoría"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={isPending}
@@ -243,19 +243,19 @@ export default function IncomePage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="income-amount">Amount ($)</Label>
+                <Label htmlFor="income-amount">Monto ($)</Label>
                 <Input 
                   id="income-amount" 
                   type="number"
                   step="0.01"
-                  placeholder="0.00"
+                  placeholder="0"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   disabled={isPending}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="income-date">Date</Label>
+                <Label htmlFor="income-date">Fecha</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -268,7 +268,7 @@ export default function IncomePage() {
                       disabled={isPending}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {incomeDate ? format(incomeDate, "PPP") : <span>Pick a date</span>}
+                      {incomeDate ? format(incomeDate, "PPP", { locale: es }) : <span>Elige una fecha</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
@@ -278,6 +278,7 @@ export default function IncomePage() {
                       onSelect={setIncomeDate}
                       initialFocus
                       disabled={isPending}
+                      locale={es}
                     />
                   </PopoverContent>
                 </Popover>
@@ -286,11 +287,11 @@ export default function IncomePage() {
           </div>
           <DialogFooter>
              <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={isPending}>Cancel</Button>
+              <Button type="button" variant="outline" disabled={isPending}>Cancelar</Button>
             </DialogClose>
             <Button type="submit" onClick={handleSubmitIncome} disabled={isPending}>
               {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {editingIncome ? "Save Changes" : "Add Entry"}
+              {editingIncome ? "Guardar Cambios" : "Añadir Entrada"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,3 +1,4 @@
+
 // use server'
 
 /**
@@ -10,16 +11,19 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import type { ProductCategory } from '@/lib/types';
+import { productCategories } from '@/lib/types';
+
 
 const SuggestProductCategoryInputSchema = z.object({
-  productName: z.string().describe('The name of the product.'),
+  productName: z.string().describe('El nombre del producto.'),
 });
 export type SuggestProductCategoryInput = z.infer<typeof SuggestProductCategoryInputSchema>;
 
 const SuggestProductCategoryOutputSchema = z.object({
   category: z
-    .enum(['Drinks', 'Food', 'Merchandise'])
-    .describe('The suggested category for the product.'),
+    .enum(productCategories as [ProductCategory, ...ProductCategory[]]) // Cast for Zod enum
+    .describe('La categoría sugerida para el producto.'),
 });
 export type SuggestProductCategoryOutput = z.infer<typeof SuggestProductCategoryOutputSchema>;
 
@@ -31,7 +35,7 @@ const prompt = ai.definePrompt({
   name: 'suggestProductCategoryPrompt',
   input: {schema: SuggestProductCategoryInputSchema},
   output: {schema: SuggestProductCategoryOutputSchema},
-  prompt: `Given the product name "{{{productName}}}", suggest a category from the following options: Drinks, Food, Merchandise. Return ONLY the name of the category.`,
+  prompt: `Dado el nombre del producto "{{{productName}}}", sugiere una categoría de las siguientes opciones: ${productCategories.join(', ')}. Devuelve SOLAMENTE el nombre de la categoría.`,
 });
 
 const suggestProductCategoryFlow = ai.defineFlow(
