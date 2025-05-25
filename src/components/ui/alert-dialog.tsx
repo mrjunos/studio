@@ -4,7 +4,7 @@ import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button" // Changed import
 
 const AlertDialog = AlertDialogPrimitive.Root
 
@@ -100,13 +100,24 @@ AlertDialogDescription.displayName =
 
 const AlertDialogAction = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Action>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action>
+  // Update props to include variant and size if we want to customize them here,
+  // but for now, we'll use default/outline as previously implied.
+  // The props passed to AlertDialogPrimitive.Action will be passed by our Button's asChild.
+  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action> 
 >(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Action
-    ref={ref}
-    className={cn(buttonVariants(), className)}
-    {...props}
-  />
+  // Wrap with new Button, use asChild
+  <Button ref={ref} className={className} {...props} asChild>
+    <AlertDialogPrimitive.Action />
+    {/* Props like onClick etc., are expected to be on AlertDialogPrimitive.Action
+        when used, and Button's asChild will pass them through.
+        The className from props is passed to the Button, which will merge it.
+        The original AlertDialogPrimitive.Action doesn't take children like this,
+        it's the props that matter. {...props} is spread on Button,
+        which will then pass them to AlertDialogPrimitive.Action via asChild.
+        The original className={cn(buttonVariants(), className)} meant default variant.
+        Our Button defaults to variant="default" so this is fine.
+    */}
+  </Button>
 ))
 AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName
 
@@ -114,15 +125,13 @@ const AlertDialogCancel = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Cancel>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Cancel>
 >(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Cancel
-    ref={ref}
-    className={cn(
-      buttonVariants({ variant: "outline" }),
-      "mt-2 sm:mt-0",
-      className
-    )}
-    {...props}
-  />
+  // Wrap with new Button, use asChild and specify variant
+  <Button ref={ref} variant="outline" className={cn("mt-2 sm:mt-0", className)} {...props} asChild>
+    <AlertDialogPrimitive.Cancel />
+    {/* The className prop for Button will take care of "mt-2 sm:mt-0" and any external className.
+        variant="outline" is passed to our Button.
+    */}
+  </Button>
 ))
 AlertDialogCancel.displayName = AlertDialogPrimitive.Cancel.displayName
 

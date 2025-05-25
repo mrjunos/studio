@@ -8,6 +8,7 @@ import React from "react";
 // Direct imports for providers
 import { SidebarProvider } from "@/components/ui/sidebar"; // Changed back to direct import
 import { TooltipProvider } from "@/components/ui/tooltip"; // Changed back to direct import
+import { ChakraProvider } from "@chakra-ui/react";
 
 
 const geistSans = Geist({
@@ -35,12 +36,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SidebarProvider defaultOpen> {/* SidebarProvider now directly from ui/sidebar */}
-          <TooltipProvider> {/* TooltipProvider directly from ui/tooltip */}
-            <AppShell>{children}</AppShell>
-            <Toaster />
-          </TooltipProvider>
-        </SidebarProvider>
+        <ChakraProvider>
+          <SidebarProvider defaultOpen> {/* SidebarProvider now directly from ui/sidebar */}
+            <TooltipProvider> {/* TooltipProvider directly from ui/tooltip */}
+              <AppShell>{children}</AppShell>
+              <Toaster />
+            </TooltipProvider>
+          </SidebarProvider>
+        </ChakraProvider>
       </body>
     </html>
   );
