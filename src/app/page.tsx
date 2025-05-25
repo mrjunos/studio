@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { PageTitle } from "@/components/shared/page-title";
-import { DollarSign, TrendingUp, Coffee, BarChart3, Archive, ExternalLink } from "lucide-react";
+import { DollarSign, TrendingUp, Coffee, BarChart3, Archive, ExternalLink, Landmark, Scale } from "lucide-react"; // Added Landmark, Scale
 import type { MetricCardProps, DailySalesData, LowStockItemForDashboard } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -18,14 +18,15 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 
 
 const initialMetrics: MetricCardProps[] = [
   { title: "Ventas Totales", value: "$0", icon: DollarSign, description: "Suma de todas las ventas completadas" },
-  { title: "Otros Ingresos", value: "$0", icon: TrendingUp, description: "Suma de otras fuentes de ingresos" },
+  { title: "Ventas (Últimos 30 Días)", value: "$0", icon: TrendingUp, description: "Suma de ventas en los últimos 30 días" },
+  { title: "Balance", value: "$0", icon: Scale, description: "(Ventas + Otros Ingresos) - Gastos" },
   { title: "Producto Más Vendido", value: "N/A", icon: Coffee, description: "Artículo vendido con más frecuencia" },
   { title: "Productos Activos", value: "0", icon: BarChart3, description: "Número de productos disponibles" },
 ];
 
-const currencyFormatter = new Intl.NumberFormat('es-CO', { // Adjusted for Colombian Spanish potentially
+const currencyFormatter = new Intl.NumberFormat('es-CO', {
   style: 'currency',
-  currency: 'COP', // Changed to COP
+  currency: 'COP',
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
@@ -55,8 +56,11 @@ export default function DashboardPage() {
             if (metric.title === "Ventas Totales" && result.totalSales !== undefined) {
               return { ...metric, value: currencyFormatter.format(result.totalSales) };
             }
-            if (metric.title === "Otros Ingresos" && result.otherIncomeTotal !== undefined) {
-              return { ...metric, value: currencyFormatter.format(result.otherIncomeTotal) };
+            if (metric.title === "Ventas (Últimos 30 Días)" && result.salesLast30Days !== undefined) {
+              return { ...metric, value: currencyFormatter.format(result.salesLast30Days) };
+            }
+            if (metric.title === "Balance" && result.balance !== undefined) {
+              return { ...metric, value: currencyFormatter.format(result.balance) };
             }
             if (metric.title === "Productos Activos" && result.activeProductsCount !== undefined) {
               return { ...metric, value: result.activeProductsCount.toString() };
@@ -103,7 +107,7 @@ export default function DashboardPage() {
   return (
     <div className="p-6">
       <PageTitle title="Dashboard" />
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"> {/* Adjusted grid for 5 cards */}
         {metrics.map((metric) => (
           <Card key={metric.title} className="shadow-md hover:shadow-lg transition-shadow duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -123,12 +127,12 @@ export default function DashboardPage() {
             <CardContent>
               {isLoadingMetric(metric.title, metric.value) ? (
                 <>
-                  <Skeleton className="h-8 w-24 mt-1" />
+                  <Skeleton className="h-7 w-24 mt-1" /> {/* Adjusted skeleton height */}
                   <Skeleton className="h-4 w-48 mt-2" />
                 </>
               ) : (
                 <>
-                  <div className="text-2xl font-bold text-primary">{metric.value}</div>
+                  <div className="text-xl font-bold text-primary">{metric.value}</div> {/* Adjusted font size */}
                   {metric.description && (
                     <p className="text-xs text-muted-foreground pt-1">{metric.description}</p>
                   )}
@@ -141,7 +145,9 @@ export default function DashboardPage() {
       <div className="mt-8 grid gap-6 md:grid-cols-2">
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" />Ventas Recientes (Últimos 30 Días)</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg font-semibold"> {/* Adjusted font size */}
+                <BarChart3 className="h-5 w-5 text-primary" />Ventas Recientes (Últimos 30 Días)
+            </CardTitle>
             <CardDescription>Monto total de ventas por día durante los últimos 30 días.</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px] pt-4">
@@ -197,7 +203,9 @@ export default function DashboardPage() {
         </Card>
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Archive className="h-5 w-5 text-primary"/>Estado del Inventario</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg font-semibold"> {/* Adjusted font size */}
+                <Archive className="h-5 w-5 text-primary"/>Estado del Inventario
+            </CardTitle>
             <CardDescription>Productos con bajo inventario (menos de 10 unidades).</CardDescription>
           </CardHeader>
           <CardContent>

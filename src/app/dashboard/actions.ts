@@ -5,21 +5,24 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, doc, getDoc, type Timestamp, limit, orderBy } from "firebase/firestore";
 import type { Sale, Product, DailySalesData, LowStockItemForDashboard } from "@/lib/types";
 import { format, subDays, startOfDay, endOfDay, eachDayOfInterval, isSameDay } from 'date-fns';
+import { es } from 'date-fns/locale'; // Import Spanish locale for date formatting if needed
 
 export async function getDashboardMetrics(): Promise<{
   success: boolean;
-  totalSales?: number;
-  otherIncomeTotal?: number;
+  totalSales?: number; // All time
+  totalExpenses?: number; // All time
+  balance?: number;
+  salesLast30Days?: number; // Sum of sales in the last 30 days
   topSellingProduct?: { name: string; quantity: number } | null;
   activeProductsCount?: number;
-  recentSales?: DailySalesData[];
+  recentSales?: DailySalesData[]; // For the chart (daily breakdown of last 30 days)
   lowStockItems?: LowStockItemForDashboard[];
   error?: string;
 }> {
   try {
     const firestoreDb = db;
 
-    // --- Total Sales & Top Selling Product ---
+    // --- Total Sales (All Time) & Top Selling Product ---
     const salesCollectionRef = collection(firestoreDb, 'sales');
     const allSalesSnapshot = await getDocs(salesCollectionRef);
     let currentTotalSales = 0;
@@ -54,12 +57,12 @@ export async function getDashboardMetrics(): Promise<{
             quantity: maxQuantity,
           };
         } else {
-          currentTopSellingProduct = { name: "Unknown Product", quantity: maxQuantity };
+          currentTopSellingProduct = { name: "Producto Desconocido", quantity: maxQuantity };
         }
       }
     }
 
-    // --- Other Income Total ---
+    // --- Other Income Total (All Time) ---
     const otherIncomesCollectionRef = collection(firestoreDb, 'otherIncomes');
     const otherIncomesSnapshot = await getDocs(otherIncomesCollectionRef);
     let currentOtherIncomeTotal = 0;
@@ -67,14 +70,25 @@ export async function getDashboardMetrics(): Promise<{
       currentOtherIncomeTotal += doc.data().amount || 0;
     });
 
+    // --- Total Expenses (All Time) ---
+    const expensesCollectionRef = collection(firestoreDb, 'expenses');
+    const expensesSnapshot = await getDocs(expensesCollectionRef);
+    let currentTotalExpenses = 0;
+    expensesSnapshot.forEach(doc => {
+      currentTotalExpenses += doc.data().amount || 0;
+    });
+
+    // --- Calculate Balance ---
+    const currentBalance = (currentTotalSales + currentOtherIncomeTotal) - currentTotalExpenses;
+
     // --- Active Products Count ---
     const activeProductsQuery = query(collection(firestoreDb, 'products'), where("stock", ">", 0));
     const activeProductsSnapshot = await getDocs(activeProductsQuery);
     const currentActiveProductsCount = activeProductsSnapshot.size;
 
-    // --- Recent Sales for Chart (Last 30 Days) ---
+    // --- Recent Sales for Chart (Last 30 Days) & Total Sales Last 30 Days ---
     const today = new Date();
-    const thirtyDaysAgo = subDays(today, 29); // Inclusive of today, so 29 days back + today = 30 days
+    const thirtyDaysAgo = subDays(today, 29);
     
     const last30DaysInterval = eachDayOfInterval({ start: thirtyDaysAgo, end: today });
     const dailySalesMap: { [key: string]: number } = {};
@@ -96,9 +110,11 @@ export async function getDashboardMetrics(): Promise<{
     });
 
     const currentRecentSalesChartData: DailySalesData[] = last30DaysInterval.map(day => ({
-      date: format(day, 'MMM d'), // Format as "Jul 21"
+      date: format(day, 'MMM d', { locale: es }),
       total: dailySalesMap[format(day, 'yyyy-MM-dd')] || 0,
     }));
+    
+    const salesLast30DaysTotal = currentRecentSalesChartData.reduce((sum, day) => sum + day.total, 0);
 
 
     // --- Low Stock Items ---
@@ -122,7 +138,9 @@ export async function getDashboardMetrics(): Promise<{
     return {
       success: true,
       totalSales: currentTotalSales,
-      otherIncomeTotal: currentOtherIncomeTotal,
+      totalExpenses: currentTotalExpenses,
+      balance: currentBalance,
+      salesLast30Days: salesLast30DaysTotal,
       activeProductsCount: currentActiveProductsCount,
       topSellingProduct: currentTopSellingProduct,
       recentSales: currentRecentSalesChartData,
@@ -130,10 +148,10 @@ export async function getDashboardMetrics(): Promise<{
     };
 
   } catch (error: any) {
-    console.error("Error fetching dashboard metrics:", error);
-    let errorMessage = "Failed to fetch dashboard metrics. Please check server logs.";
+    console.error("Error al obtener métricas del dashboard:", error);
+    let errorMessage = "Error al obtener métricas del dashboard. Por favor revisa los logs del servidor.";
     if (error.code === 'permission-denied') {
-      errorMessage = "Firestore permission denied. Please check your security rules.";
+      errorMessage = "Permiso denegado en Firestore. Por favor revisa tus reglas de seguridad.";
     }
     return { success: false, error: errorMessage };
   }
