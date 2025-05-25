@@ -148,7 +148,7 @@ export default function DashboardPage() {
             <CardTitle className="flex items-center gap-2 text-lg font-semibold"> {/* Adjusted font size */}
                 <BarChart3 className="h-5 w-5 text-primary" />Ventas Recientes (Últimos 30 Días)
             </CardTitle>
-            <CardDescription>Monto total de ventas por día durante los últimos 30 días.</CardDescription>
+            <CardDescription>Total ventas por día en los últimos 30 días.</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px] pt-4">
             {loading && recentSales.length === 0 ? ( 
@@ -242,3 +242,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
