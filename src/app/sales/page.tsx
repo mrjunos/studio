@@ -15,10 +15,11 @@ import { getProducts } from "@/app/products/actions";
 import { useToast } from "@/hooks/use-toast";
 import { processSale, getSales, type CartItemForAction } from "./actions";
 import { format } from "date-fns";
-import { es } from 'date-fns/locale'; // Import Spanish locale
+import { es } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/auth-context";
 
 interface CartItemClient extends CartItemForAction {
 }
@@ -43,6 +44,7 @@ export default function SalesPage() {
 
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const { isLoggedIn } = useAuth();
 
   const fetchPageData = async () => {
     setIsLoadingProducts(true);
@@ -66,6 +68,10 @@ export default function SalesPage() {
   }, []);
 
   const handleAddToCart = () => {
+    if (!isLoggedIn) {
+      toast({ title: "Acción no permitida", description: "Debes iniciar sesión para añadir al carrito.", variant: "destructive" });
+      return;
+    }
     if (!selectedProductId || quantity <= 0) {
       toast({ title: "Entrada Inválida", description: "Por favor, selecciona un producto e ingresa una cantidad válida.", variant: "destructive" });
       return;
@@ -144,6 +150,10 @@ export default function SalesPage() {
   };
 
   const handleProcessSale = async () => {
+     if (!isLoggedIn) {
+      toast({ title: "Acción no permitida", description: "Debes iniciar sesión para procesar ventas.", variant: "destructive" });
+      return;
+    }
     if (cart.length === 0) {
       toast({ title: "Carrito Vacío", description: "Por favor, añade artículos al carrito antes de procesar la venta.", variant: "destructive" });
       return;
@@ -188,7 +198,7 @@ export default function SalesPage() {
             <div>
               <Label htmlFor="product">Producto</Label>
               {isLoadingProducts ? <Loader2 className="h-5 w-5 animate-spin mt-2" /> : (
-                <Select value={selectedProductId} onValueChange={setSelectedProductId} disabled={isPending}>
+                <Select value={selectedProductId} onValueChange={setSelectedProductId} disabled={!isLoggedIn || isPending}>
                   <SelectTrigger id="product">
                     <SelectValue placeholder="Selecciona un producto" />
                   </SelectTrigger>
@@ -213,10 +223,10 @@ export default function SalesPage() {
                 value={quantity}
                 onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
                 min="1"
-                disabled={isPending || isLoadingProducts}
+                disabled={!isLoggedIn || isPending || isLoadingProducts}
               />
             </div>
-            <Button onClick={handleAddToCart} disabled={isPending || isLoadingProducts || !selectedProductId || quantity <= 0} className="w-full">
+            <Button onClick={handleAddToCart} disabled={!isLoggedIn || isPending || isLoadingProducts || !selectedProductId || quantity <= 0} className="w-full">
               <PlusCircle className="mr-2 h-4 w-4" /> Añadir al Carrito
             </Button>
           </CardContent>
@@ -253,12 +263,12 @@ export default function SalesPage() {
                           onChange={(e) => handleUpdateQuantity(item.productId, e.target.value)}
                           min="1"
                           className="h-8 text-center"
-                          disabled={isPending}
+                          disabled={!isLoggedIn || isPending}
                         />
                       </TableCell>
                       <TableCell className="text-right">{currencyFormatter.format(item.priceAtSale * item.quantity)}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleRemoveFromCart(item.productId)} className="text-destructive hover:text-destructive/80" disabled={isPending}>
+                        <Button variant="ghost" size="icon" onClick={() => handleRemoveFromCart(item.productId)} className="text-destructive hover:text-destructive/80" disabled={!isLoggedIn ||isPending}>
                           <XCircle className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -281,7 +291,7 @@ export default function SalesPage() {
                         "w-full justify-start text-left font-normal",
                         !selectedSaleDate && "text-muted-foreground"
                       )}
-                      disabled={isPending}
+                      disabled={!isLoggedIn || isPending}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {selectedSaleDate ? format(selectedSaleDate, "PPP", { locale: es }) : <span>Elige una fecha (defecto: ahora)</span>}
@@ -293,7 +303,7 @@ export default function SalesPage() {
                       selected={selectedSaleDate}
                       onSelect={setSelectedSaleDate}
                       initialFocus
-                      disabled={isPending}
+                      disabled={!isLoggedIn || isPending}
                       locale={es}
                     />
                   </PopoverContent>
@@ -303,7 +313,7 @@ export default function SalesPage() {
                 <span>Total:</span>
                 <span className="text-primary">{currencyFormatter.format(calculateTotal())}</span>
               </div>
-              <Button onClick={handleProcessSale} className="w-full mt-2" disabled={isPending || isLoadingProducts}>
+              <Button onClick={handleProcessSale} className="w-full mt-2" disabled={!isLoggedIn || isPending || isLoadingProducts}>
                 {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
                 Procesar Venta
               </Button>

@@ -17,13 +17,13 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 
 
 
 const initialMetrics: MetricCardProps[] = [
-  { title: "Ventas Totales", value: "$0", icon: DollarSign, description: "Suma de todas las ventas completadas" },
-  { title: "Ventas (Últimos 30 Días)", value: "$0", icon: TrendingUp, description: "Suma de ventas en los últimos 30 días" },
-  { title: "Gastos Totales", value: "$0", icon: TrendingDown, description: "Suma de todos los gastos registrados" },
-  { title: "Gastos (Últimos 30 Días)", value: "$0", icon: CreditCard, description: "Suma de gastos en los últimos 30 días" },
+  { title: "Ventas Totales", value: "$0", icon: DollarSign, description: "Total histórico" },
+  { title: "Gastos Totales", value: "$0", icon: TrendingDown, description: "Total histórico" },
   { title: "Balance", value: "$0", icon: Scale, description: "(Ventas + Otros Ingresos) - Gastos (Histórico)" },
-  { title: "Transacciones (Últimos 30 Días)", value: "0", icon: ListChecks, description: "Número total de ventas individuales" },
-  { title: "Ticket Promedio (Últimos 30 Días)", value: "$0", icon: BadgeDollarSign, description: "Valor promedio por transacción" },
+  { title: "Ventas 30 Días", value: "$0", icon: TrendingUp, description: "Últimos 30 Días" },
+  { title: "Gastos 30 Días", value: "$0", icon: CreditCard, description: "Últimos 30 Días" },
+  { title: "Cantidad de Ventas", value: "0", icon: ListChecks, description: "Número de ventas - Últimos 30 Días" },
+  { title: "Venta Promedio 30 Días", value: "$0", icon: BadgeDollarSign, description: "Valor promedio por transacción" },
   { title: "Producto Más Vendido", value: "N/A", icon: Coffee, description: "Artículo vendido con más frecuencia" },
   { title: "Productos Activos", value: "0", icon: BarChart3, description: "Número de productos disponibles" },
 ];
@@ -60,22 +60,22 @@ export default function DashboardPage() {
             if (metric.title === "Ventas Totales" && result.totalSales !== undefined) {
               return { ...metric, value: currencyFormatter.format(result.totalSales) };
             }
-            if (metric.title === "Ventas (Últimos 30 Días)" && result.salesLast30Days !== undefined) {
+            if (metric.title === "Ventas 30 Días" && result.salesLast30Days !== undefined) {
               return { ...metric, value: currencyFormatter.format(result.salesLast30Days) };
             }
             if (metric.title === "Gastos Totales" && result.totalExpenses !== undefined) {
               return { ...metric, value: currencyFormatter.format(result.totalExpenses) };
             }
-            if (metric.title === "Gastos (Últimos 30 Días)" && result.expensesLast30Days !== undefined) {
+            if (metric.title === "Gastos 30 Días" && result.expensesLast30Days !== undefined) {
               return { ...metric, value: currencyFormatter.format(result.expensesLast30Days) };
             }
             if (metric.title === "Balance" && result.balance !== undefined) {
               return { ...metric, value: currencyFormatter.format(result.balance) };
             }
-            if (metric.title === "Transacciones (Últimos 30 Días)" && result.transactionsLast30Days !== undefined) {
+            if (metric.title === "Cantidad de Ventas" && result.transactionsLast30Days !== undefined) {
               return { ...metric, value: result.transactionsLast30Days.toString() };
             }
-            if (metric.title === "Ticket Promedio (Últimos 30 Días)" && result.averageTicketLast30Days !== undefined) {
+            if (metric.title === "Venta Promedio 30 Días" && result.averageTicketLast30Days !== undefined) {
               return { ...metric, value: currencyFormatter.format(result.averageTicketLast30Days) };
             }
             if (metric.title === "Productos Activos" && result.activeProductsCount !== undefined) {
@@ -123,7 +123,7 @@ export default function DashboardPage() {
   return (
     <div className="p-6">
       <PageTitle title="Dashboard" />
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3"> 
+      <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3"> 
         {metrics.map((metric) => (
           <Card key={metric.title} className="shadow-md hover:shadow-lg transition-shadow duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

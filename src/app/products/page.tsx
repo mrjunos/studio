@@ -4,7 +4,7 @@
 import { useState, useEffect, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { PageTitle } from "@/components/shared/page-title";
-import { PlusCircle, Edit, Trash2, Loader2, ImageIcon, Coffee, Layers, Warehouse } from "lucide-react"; // Added Warehouse
+import { PlusCircle, Edit, Trash2, Loader2, ImageIcon, Coffee, Layers, Warehouse } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -29,7 +29,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Card } from "@/components/ui/card"; // Card is used for each product item
+import { Card } from "@/components/ui/card";
+import { useAuth } from "@/contexts/auth-context";
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -43,9 +44,9 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  // const [searchTerm, setSearchTerm] = useState(""); // Comentado según la última UI
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const { isLoggedIn } = useAuth();
 
   const fetchProducts = async () => {
     setIsLoading(true);
@@ -67,16 +68,28 @@ export default function ProductsPage() {
   }, []);
 
   const handleAddProduct = () => {
+    if (!isLoggedIn) {
+      toast({ title: "Acción no permitida", description: "Debes iniciar sesión para añadir productos.", variant: "destructive" });
+      return;
+    }
     setEditingProduct(null);
     setIsDialogOpen(true);
   };
 
   const handleEditProduct = (product: Product) => {
+     if (!isLoggedIn) {
+      toast({ title: "Acción no permitida", description: "Debes iniciar sesión para editar productos.", variant: "destructive" });
+      return;
+    }
     setEditingProduct(product);
     setIsDialogOpen(true);
   };
 
   const handleDeleteProduct = async (productId: string) => {
+     if (!isLoggedIn) {
+      toast({ title: "Acción no permitida", description: "Debes iniciar sesión para eliminar productos.", variant: "destructive" });
+      return;
+    }
     startTransition(async () => {
       const result = await deleteProduct(productId);
       if (result.success) {
@@ -89,6 +102,7 @@ export default function ProductsPage() {
   };
 
   const handleSubmitProductForm = async (data: ProductFormInput) => {
+    // Auth check already handled by handleAdd/EditProduct before opening dialog
     let result;
     if (editingProduct) {
       result = await updateProduct(editingProduct.id, data);
@@ -102,11 +116,6 @@ export default function ProductsPage() {
     return result;
   };
 
-  // Filtrado comentado según la última UI
-  // const filteredProducts = products.filter(product =>
-  //   product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //   product.category.toLowerCase().includes(searchTerm.toLowerCase())
-  // );
   const filteredProducts = products;
 
 
@@ -115,7 +124,7 @@ export default function ProductsPage() {
       <PageTitle
         title="Gestión de Productos"
         actions={
-          <Button onClick={handleAddProduct} className="bg-primary hover:bg-primary/90">
+          <Button onClick={handleAddProduct} className="bg-primary hover:bg-primary/90" disabled={!isLoggedIn || isPending}>
             <PlusCircle className="mr-2 h-4 w-4" /> Añadir Producto
           </Button>
         }
@@ -126,7 +135,7 @@ export default function ProductsPage() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="w-full space-y-4"> {/* Asegurando w-full aquí */}
+        <div className="w-full space-y-4">
           {filteredProducts.length > 0 ? (
             filteredProducts.map((product) => (
               <Card 
@@ -167,8 +176,9 @@ export default function ProductsPage() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="text-destructive hover:bg-destructive/10 h-9 w-9 p-0 flex-shrink-0"
+                          className="text-destructive hover:bg-destructive/20 hover:text-destructive focus-visible:ring-destructive h-9 w-9 p-0 flex-shrink-0"
                           aria-label="Eliminar producto"
+                          disabled={!isLoggedIn || isPending}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -187,7 +197,7 @@ export default function ProductsPage() {
                                e.stopPropagation();
                                handleDeleteProduct(product.id);
                             }}
-                            disabled={isPending}
+                            disabled={!isLoggedIn || isPending}
                             className="bg-destructive hover:bg-destructive/90"
                           >
                             {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Eliminar"}
@@ -204,7 +214,7 @@ export default function ProductsPage() {
                <Layers className="h-16 w-16 text-muted-foreground mb-4" />
                <p className="text-xl font-semibold text-muted-foreground mb-1">No Hay Productos Registrados Aún</p>
                <p className="text-sm text-muted-foreground mb-4">Empieza añadiendo tu primer producto para gestionar tu inventario.</p>
-               <Button onClick={handleAddProduct} className="bg-primary hover:bg-primary/90">
+               <Button onClick={handleAddProduct} className="bg-primary hover:bg-primary/90" disabled={!isLoggedIn || isPending}>
                  <PlusCircle className="mr-2 h-4 w-4" /> Añadir Primer Producto
                </Button>
             </div>
@@ -212,21 +222,23 @@ export default function ProductsPage() {
         </div>
       )}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingProduct ? "Editar Producto" : "Añadir Nuevo Producto"}</DialogTitle>
-            <DialogDescription>
-              {editingProduct ? "Actualiza los detalles de este producto." : "Completa los detalles para el nuevo producto."}
-            </DialogDescription>
-          </DialogHeader>
-          <ProductForm
-            product={editingProduct}
-            onSubmit={handleSubmitProductForm}
-            onClose={() => setIsDialogOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      {isDialogOpen && isLoggedIn && ( // Only render dialog if user is logged in
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingProduct ? "Editar Producto" : "Añadir Nuevo Producto"}</DialogTitle>
+              <DialogDescription>
+                {editingProduct ? "Actualiza los detalles de este producto." : "Completa los detalles para el nuevo producto."}
+              </DialogDescription>
+            </DialogHeader>
+            <ProductForm
+              product={editingProduct}
+              onSubmit={handleSubmitProductForm}
+              onClose={() => setIsDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

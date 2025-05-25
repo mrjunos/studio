@@ -2,10 +2,12 @@
 "use server";
 
 import { z } from "zod";
-import type { Sale, Product } from "@/lib/types"; // Removed SaleItem as it's part of Sale
+import type { Sale, Product } from "@/lib/types";
 import { db } from "@/lib/firebase"; 
 import { collection, addDoc, doc, getDoc, writeBatch, Timestamp, increment, getDocs, query, orderBy } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
+
+// TODO: Implement server-side authentication check for all write operations.
 
 const SaleItemSchema = z.object({
   productId: z.string(),
@@ -50,7 +52,7 @@ export async function processSale(
   totalAmount: number,
   customSaleDate?: Date 
 ): Promise<{ success: boolean; saleId?: string; error?: string; unavailableItems?: {productId: string, name: string, availableStock: number}[] }> {
-  
+  // Placeholder: Add server-side auth check here
   const validation = ProcessSaleInputSchema.safeParse({ items: cartItems, totalAmount });
   if (!validation.success) {
     return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };

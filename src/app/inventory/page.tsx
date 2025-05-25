@@ -32,6 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { es } from 'date-fns/locale';
 import { getInventoryAdjustments, addInventoryAdjustment, type InventoryAdjustmentFormInput } from "./actions";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -46,6 +47,7 @@ export default function InventoryPage() {
   
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const { isLoggedIn } = useAuth();
 
   const fetchPageData = async () => {
     setIsLoadingProducts(true);
@@ -69,6 +71,10 @@ export default function InventoryPage() {
   }, []);
 
   const handleAddAdjustmentDialog = () => {
+    if (!isLoggedIn) {
+      toast({ title: "Acción no permitida", description: "Debes iniciar sesión para realizar ajustes de inventario.", variant: "destructive" });
+      return;
+    }
     setIsDialogOpen(true);
     setSelectedProductId("");
     setQuantityChange("");
@@ -76,6 +82,7 @@ export default function InventoryPage() {
   };
 
   const handleSubmitAdjustment = async () => {
+    // Auth check already handled by handleAddAdjustmentDialog
     if (!selectedProductId || quantityChange === "" || Number(quantityChange) === 0) {
       toast({ title: "Entrada Inválida", description: "Por favor, selecciona un producto e ingresa un cambio de cantidad válido y diferente de cero.", variant: "destructive" });
       return;
@@ -116,7 +123,7 @@ export default function InventoryPage() {
       <PageTitle 
         title="Ajustes de Inventario" 
         actions={
-          <Button onClick={handleAddAdjustmentDialog} className="bg-primary hover:bg-primary/90" disabled={isPending || isLoadingProducts}>
+          <Button onClick={handleAddAdjustmentDialog} className="bg-primary hover:bg-primary/90" disabled={!isLoggedIn || isPending || isLoadingProducts}>
             <PlusCircle className="mr-2 h-4 w-4" /> Nuevo Ajuste
           </Button>
         } 
@@ -161,65 +168,67 @@ export default function InventoryPage() {
         </div>
       )}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Nuevo Ajuste de Inventario</DialogTitle>
-            <DialogDescription>
-              Ajusta el nivel de stock de un producto. Usa valores negativos para disminuciones.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="product-select">Producto</Label>
-              {isLoadingProducts ? <Loader2 className="h-5 w-5 animate-spin" /> : (
-                <Select value={selectedProductId} onValueChange={setSelectedProductId} disabled={isPending}>
-                  <SelectTrigger id="product-select">
-                    <SelectValue placeholder="Selecciona un producto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map(product => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.name} (Stock Actual: {product.stock})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+      {isDialogOpen && isLoggedIn && (
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Nuevo Ajuste de Inventario</DialogTitle>
+              <DialogDescription>
+                Ajusta el nivel de stock de un producto. Usa valores negativos para disminuciones.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="product-select">Producto</Label>
+                {isLoadingProducts ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                  <Select value={selectedProductId} onValueChange={setSelectedProductId} disabled={isPending}>
+                    <SelectTrigger id="product-select">
+                      <SelectValue placeholder="Selecciona un producto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map(product => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name} (Stock Actual: {product.stock})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="quantity-change">Cambio de Cantidad</Label>
+                <Input 
+                  id="quantity-change" 
+                  type="number"
+                  placeholder="Ej: 10 o -5"
+                  value={quantityChange}
+                  onChange={(e) => setQuantityChange(e.target.value)}
+                  disabled={isPending}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reason">Razón (Opcional)</Label>
+                <Textarea 
+                  id="reason" 
+                  placeholder="Ej: Corrección de inventario, Mercancía dañada"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  disabled={isPending}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="quantity-change">Cambio de Cantidad</Label>
-              <Input 
-                id="quantity-change" 
-                type="number"
-                placeholder="Ej: 10 o -5"
-                value={quantityChange}
-                onChange={(e) => setQuantityChange(e.target.value)}
-                disabled={isPending}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="reason">Razón (Opcional)</Label>
-              <Textarea 
-                id="reason" 
-                placeholder="Ej: Corrección de inventario, Mercancía dañada"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                disabled={isPending}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={isPending}>Cancelar</Button>
-            </DialogClose>
-            <Button type="submit" onClick={handleSubmitAdjustment} disabled={isPending || isLoadingProducts}>
-              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Aplicar Ajuste
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline" disabled={isPending}>Cancelar</Button>
+              </DialogClose>
+              <Button type="submit" onClick={handleSubmitAdjustment} disabled={isPending || isLoadingProducts}>
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Aplicar Ajuste
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -10,6 +10,20 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
 
+// TODO: Implement server-side authentication check for all write operations.
+// Example:
+// import { auth } from 'firebase-admin'; (Requires Firebase Admin SDK setup)
+// const verifyUser = async (idToken: string) => {
+//   try {
+//     const decodedToken = await auth().verifyIdToken(idToken);
+//     return decodedToken.uid;
+//   } catch (error) {
+//     console.error("Error verifying token:", error);
+//     return null;
+//   }
+// };
+// Then, in each action, call verifyUser(idTokenFromClient) and proceed only if valid.
+
 const ProductSchema = z.object({
   id: z.string().optional(), 
   name: z.string().min(2, "El nombre del producto debe tener al menos 2 caracteres"),
@@ -43,6 +57,7 @@ export async function getProducts(): Promise<Product[]> {
 }
 
 export async function addProduct(data: ProductFormInput): Promise<{ success: boolean; product?: Product; error?: string }> {
+  // Placeholder: Add server-side auth check here
   const validation = ProductSchema.safeParse(data);
   if (!validation.success) {
     return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
@@ -59,7 +74,7 @@ export async function addProduct(data: ProductFormInput): Promise<{ success: boo
 
     const docRef = await addDoc(collection(db, 'products'), productData);
     revalidatePath('/products');
-    revalidatePath('/'); // Revalidate dashboard as well
+    revalidatePath('/'); 
 
     return { success: true, product: { id: docRef.id, ...productData as Omit<Product, 'id'> } };
   } catch (e: any) {
@@ -73,6 +88,7 @@ export async function addProduct(data: ProductFormInput): Promise<{ success: boo
 }
 
 export async function updateProduct(id: string, data: ProductFormInput): Promise<{ success: boolean; product?: Product; error?: string }> {
+  // Placeholder: Add server-side auth check here
   const validation = ProductSchema.safeParse(data);
   if (!validation.success) {
     return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
@@ -96,7 +112,7 @@ export async function updateProduct(id: string, data: ProductFormInput): Promise
 
     await updateDoc(productRef, updatedData);
     revalidatePath('/products');
-    revalidatePath('/'); // Revalidate dashboard as well
+    revalidatePath('/'); 
 
     const updatedProductDoc = await getDoc(productRef);
     const updatedProduct = { id: updatedProductDoc.id, ...updatedProductDoc.data() as Omit<Product, 'id'> };
@@ -113,11 +129,12 @@ export async function updateProduct(id: string, data: ProductFormInput): Promise
 }
 
 export async function deleteProduct(id: string): Promise<{ success: boolean; error?: string }> {
+  // Placeholder: Add server-side auth check here
   try {
     const productRef = doc(db, 'products', id);
     await deleteDoc(productRef);
     revalidatePath('/products');
-    revalidatePath('/'); // Revalidate dashboard as well
+    revalidatePath('/'); 
     return { success: true };
   } catch (e: any) {
     console.error("Error al eliminar documento: ", e);
@@ -139,7 +156,7 @@ export async function handleSuggestCategory(productName: string): Promise<{ cate
     if (productCategories.includes(result.category as ProductCategory)) {
       return { category: result.category as ProductCategory };
     }
-    return { category: result.category as ProductCategory }; // Assume AI sticks to enum
+    return { category: result.category as ProductCategory };
   } catch (error) {
     console.error("Error en sugerencia de categoría por IA:", error);
     return { error: "Error al sugerir categoría. Por favor, selecciona manualmente." };

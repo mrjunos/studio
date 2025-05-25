@@ -8,6 +8,8 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, Timestamp, orderBy, query } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
 
+// TODO: Implement server-side authentication check for all write operations.
+
 const ExpenseSchema = z.object({
   id: z.string().optional(),
   description: z.string().min(1, "La descripción es obligatoria"),
@@ -43,6 +45,7 @@ export async function getExpenses(): Promise<Expense[]> {
 }
 
 export async function addExpense(data: ExpenseFormInput): Promise<{ success: boolean; expense?: Expense; error?: string }> {
+  // Placeholder: Add server-side auth check here
   const validation = ExpenseSchema.omit({ id: true }).safeParse(data);
   if (!validation.success) {
     return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
@@ -65,6 +68,7 @@ export async function addExpense(data: ExpenseFormInput): Promise<{ success: boo
 }
 
 export async function updateExpense(id: string, data: ExpenseFormInput): Promise<{ success: boolean; expense?: Expense; error?: string }> {
+  // Placeholder: Add server-side auth check here
   const validation = ExpenseSchema.omit({ id: true }).safeParse(data);
   if (!validation.success) {
     return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
@@ -95,6 +99,7 @@ export async function updateExpense(id: string, data: ExpenseFormInput): Promise
 }
 
 export async function deleteExpense(id: string): Promise<{ success: boolean; error?: string }> {
+  // Placeholder: Add server-side auth check here
   try {
     const expenseRef = doc(db, 'expenses', id);
     await deleteDoc(expenseRef);

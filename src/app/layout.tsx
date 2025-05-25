@@ -6,8 +6,9 @@ import { AppShell } from "@/components/app-shell";
 import { Toaster } from "@/components/ui/toaster";
 import React from "react";
 // Direct imports for providers
-import { SidebarProvider } from "@/components/ui/sidebar"; 
-import { TooltipProvider } from "@/components/ui/tooltip"; 
+import { SidebarProvider as ActualSidebarProvider } from "@/components/ui/sidebar"; 
+import { TooltipProvider as ActualTooltipProvider } from "@/components/ui/tooltip"; 
+import { AuthProvider } from "@/contexts/auth-context";
 
 
 const geistSans = Geist({
@@ -35,12 +36,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SidebarProvider defaultOpen>
-          <TooltipProvider>
-            <AppShell>{children}</AppShell>
-            <Toaster />
-          </TooltipProvider>
-        </SidebarProvider>
+        <AuthProvider>
+          <ActualSidebarProvider defaultOpen>
+            <ActualTooltipProvider>
+              <AppShell>{children}</AppShell>
+              <Toaster />
+            </ActualTooltipProvider>
+          </ActualSidebarProvider>
+        </AuthProvider>
       </body>
     </html>
   );

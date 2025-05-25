@@ -44,6 +44,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/contexts/auth-context";
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -65,6 +66,7 @@ export default function IncomePage() {
 
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const { isLoggedIn } = useAuth();
 
   const fetchIncomes = async () => {
     setIsLoading(true);
@@ -86,6 +88,10 @@ export default function IncomePage() {
   }, []);
 
   const handleOpenDialog = (income: OtherIncome | null = null) => {
+    if (!isLoggedIn) {
+      toast({ title: "Acción no permitida", description: "Debes iniciar sesión para gestionar ingresos.", variant: "destructive" });
+      return;
+    }
     setEditingIncome(income);
     if (income) {
       setDescription(income.description);
@@ -100,6 +106,7 @@ export default function IncomePage() {
   };
 
   const handleSubmitIncome = async () => {
+    // Auth check done by handleOpenDialog
     if (!description || !amount || !incomeDate) {
       toast({ title: "Entrada Inválida", description: "Por favor, completa todos los campos requeridos.", variant: "destructive" });
       return;
@@ -131,6 +138,10 @@ export default function IncomePage() {
   };
   
   const handleDeleteConfirmation = async (incomeId: string) => {
+    if (!isLoggedIn) {
+      toast({ title: "Acción no permitida", description: "Debes iniciar sesión para eliminar ingresos.", variant: "destructive" });
+      return;
+    }
      startTransition(async () => {
         const result = await deleteOtherIncome(incomeId);
         if (result.success) {
@@ -148,7 +159,7 @@ export default function IncomePage() {
       <PageTitle 
         title="Otros Ingresos" 
         actions={
-          <Button onClick={() => handleOpenDialog()} className="bg-primary hover:bg-primary/90">
+          <Button onClick={() => handleOpenDialog()} className="bg-primary hover:bg-primary/90" disabled={!isLoggedIn || isPending}>
             <PlusCircle className="mr-2 h-4 w-4" /> Añadir Ingreso
           </Button>
         } 
@@ -179,12 +190,12 @@ export default function IncomePage() {
                       {currencyFormatter.format(income.amount)}
                     </TableCell>
                     <TableCell className="text-right">
-                       <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(income)} className="mr-2 hover:text-accent" disabled={isPending}>
+                       <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(income)} className="mr-2 hover:text-accent" disabled={!isLoggedIn || isPending}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="hover:text-destructive" disabled={isPending}>
+                          <Button variant="ghost" size="icon" className="hover:text-destructive" disabled={!isLoggedIn || isPending}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </AlertDialogTrigger>
@@ -222,80 +233,82 @@ export default function IncomePage() {
         </div>
       )}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingIncome ? "Editar Entrada de Ingreso" : "Añadir Nueva Entrada de Ingreso"}</DialogTitle>
-            <DialogDescription>
-              {editingIncome ? "Actualiza los detalles de esta entrada de ingreso." : "Registra una nueva fuente de otros ingresos."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="income-description">Descripción</Label>
-              <Textarea 
-                id="income-description" 
-                placeholder="Ej: Catering de evento, Tarifa de consultoría"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                disabled={isPending}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+      {isDialogOpen && isLoggedIn && (
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{editingIncome ? "Editar Entrada de Ingreso" : "Añadir Nueva Entrada de Ingreso"}</DialogTitle>
+              <DialogDescription>
+                {editingIncome ? "Actualiza los detalles de esta entrada de ingreso." : "Registra una nueva fuente de otros ingresos."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="income-amount">Monto ($)</Label>
-                <Input 
-                  id="income-amount" 
-                  type="number"
-                  step="0.01"
-                  placeholder="0"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                <Label htmlFor="income-description">Descripción</Label>
+                <Textarea 
+                  id="income-description" 
+                  placeholder="Ej: Catering de evento, Tarifa de consultoría"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                   disabled={isPending}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="income-date">Fecha</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      id="income-date"
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !incomeDate && "text-muted-foreground"
-                      )}
-                      disabled={isPending}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {incomeDate ? format(incomeDate, "PPP", { locale: es }) : <span>Elige una fecha</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={incomeDate}
-                      onSelect={setIncomeDate}
-                      initialFocus
-                      disabled={isPending}
-                      locale={es}
-                    />
-                  </PopoverContent>
-                </Popover>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="income-amount">Monto ($)</Label>
+                  <Input 
+                    id="income-amount" 
+                    type="number"
+                    step="0.01"
+                    placeholder="0"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    disabled={isPending}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="income-date">Fecha</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        id="income-date"
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !incomeDate && "text-muted-foreground"
+                        )}
+                        disabled={isPending}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {incomeDate ? format(incomeDate, "PPP", { locale: es }) : <span>Elige una fecha</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={incomeDate}
+                        onSelect={setIncomeDate}
+                        initialFocus
+                        disabled={isPending}
+                        locale={es}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
             </div>
-          </div>
-          <DialogFooter>
-             <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={isPending}>Cancelar</Button>
-            </DialogClose>
-            <Button type="submit" onClick={handleSubmitIncome} disabled={isPending}>
-              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {editingIncome ? "Guardar Cambios" : "Añadir Entrada"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+               <DialogClose asChild>
+                <Button type="button" variant="outline" disabled={isPending}>Cancelar</Button>
+              </DialogClose>
+              <Button type="submit" onClick={handleSubmitIncome} disabled={isPending}>
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {editingIncome ? "Guardar Cambios" : "Añadir Entrada"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

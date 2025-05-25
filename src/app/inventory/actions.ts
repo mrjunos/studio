@@ -7,6 +7,8 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, doc, getDoc, Timestamp, increment, writeBatch, orderBy, query } from "firebase/firestore";
 import { revalidatePath } from 'next/cache';
 
+// TODO: Implement server-side authentication check for all write operations.
+
 const InventoryAdjustmentSchema = z.object({
   productId: z.string().min(1, "El ID del producto es obligatorio"),
   productName: z.string().min(1, "El nombre del producto es obligatorio"), 
@@ -42,6 +44,7 @@ export async function getInventoryAdjustments(): Promise<InventoryAdjustment[]> 
 }
 
 export async function addInventoryAdjustment(data: InventoryAdjustmentFormInput, productName: string): Promise<{ success: boolean; adjustment?: InventoryAdjustment; error?: string }> {
+  // Placeholder: Add server-side auth check here
   const fullData = { ...data, productName, adjustmentDate: new Date() }; 
   const validation = InventoryAdjustmentSchema.omit({id: true}).safeParse(fullData);
 
@@ -80,7 +83,7 @@ export async function addInventoryAdjustment(data: InventoryAdjustmentFormInput,
 
     revalidatePath('/inventory');
     revalidatePath('/products'); 
-    revalidatePath('/'); // Revalidate dashboard
+    revalidatePath('/'); 
 
     const newAdjustment = {
         id: newAdjustmentRef.id,
