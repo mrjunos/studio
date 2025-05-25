@@ -1,12 +1,14 @@
 
-export type ProductCategory = "Bolsa de Café" | "Aji";
+// Define productCategories as a const array first
+export const productCategories = ["Bolsa de Café", "Aji"] as const;
 
-export const productCategories: ProductCategory[] = ["Bolsa de Café", "Aji"];
+// Derive ProductCategory type from the const array
+export type ProductCategory = typeof productCategories[number];
 
 export interface Product {
   id: string;
   name: string;
-  category: ProductCategory;
+  category: ProductCategory; // This will now correctly use the derived union type
   price: number;
   stock: number;
   imageUrl?: string;

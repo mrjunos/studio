@@ -15,7 +15,8 @@ const InventoryAdjustmentSchema = z.object({
   adjustmentDate: z.date({ required_error: "Adjustment date is required" }),
 });
 
-export type InventoryAdjustmentFormInput = Omit<z.infer<typeof InventoryAdjustmentSchema>, "id" | "productName"> & { productId: string };
+// adjustmentDate is set server-side, productName is passed as a separate arg.
+export type InventoryAdjustmentFormInput = Omit<z.infer<typeof InventoryAdjustmentSchema>, "id" | "productName" | "adjustmentDate">;
 
 
 // Helper to convert Firestore Timestamps to ISO strings for dates
@@ -44,13 +45,15 @@ export async function getInventoryAdjustments(): Promise<InventoryAdjustment[]> 
 
 export async function addInventoryAdjustment(data: InventoryAdjustmentFormInput, productName: string): Promise<{ success: boolean; adjustment?: InventoryAdjustment; error?: string }> {
   const fullData = { ...data, productName, adjustmentDate: new Date() }; // Use current date for adjustment
-  const validation = InventoryAdjustmentSchema.omit({id: true}).safeParse(fullData);
+  // InventoryAdjustmentSchema does not have 'id', so .omit({id:true}) is not needed and might be confusing type inference.
+  const validation = InventoryAdjustmentSchema.safeParse(fullData);
 
   if (!validation.success) {
     return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
   }
 
-  const { productId, quantityChange } = validation.data;
+  // If validation is successful, validation.data is typed correctly.
+  const { productId, quantityChange, adjustmentDate, reason } = validation.data;
 
   const productRef = doc(db, 'products', productId);
   const adjustmentCollectionRef = collection(db, 'inventoryAdjustments');
@@ -70,8 +73,11 @@ export async function addInventoryAdjustment(data: InventoryAdjustmentFormInput,
 
     // 1. Add inventory adjustment record
     const adjustmentDataForFirestore = {
-      ...validation.data,
-      adjustmentDate: Timestamp.fromDate(validation.data.adjustmentDate),
+      productId,
+      productName: validation.data.productName, // productName is in validation.data
+      quantityChange,
+      reason, // reason is optional, so it's fine if undefined
+      adjustmentDate: Timestamp.fromDate(adjustmentDate), // Use destructured adjustmentDate
     };
     const newAdjustmentRef = doc(adjustmentCollectionRef); // Auto-generate ID
     batch.set(newAdjustmentRef, adjustmentDataForFirestore);
@@ -84,12 +90,15 @@ export async function addInventoryAdjustment(data: InventoryAdjustmentFormInput,
     revalidatePath('/inventory');
     revalidatePath('/products'); // Product stock changed
 
-    const newAdjustment = { 
-        id: newAdjustmentRef.id, 
-        ...validation.data, 
-        adjustmentDate: validation.data.adjustmentDate.toISOString() 
+    const newAdjustmentData = {
+        id: newAdjustmentRef.id,
+        productId,
+        productName: validation.data.productName,
+        quantityChange,
+        reason,
+        adjustmentDate: adjustmentDate.toISOString() // Use destructured adjustmentDate
     };
-    return { success: true, adjustment: newAdjustment as InventoryAdjustment };
+    return { success: true, adjustment: newAdjustmentData as InventoryAdjustment };
 
   } catch (e: any) {
     console.error("Error adding inventory adjustment: ", e);
