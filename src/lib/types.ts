@@ -48,3 +48,16 @@ export interface MetricCardProps {
   icon: React.ElementType;
   description?: string;
 }
+
+export interface RecentSaleForDashboard {
+  id: string;
+  saleDate: string; // ISO string
+  totalAmount: number;
+  itemCount: number;
+}
+
+export interface LowStockItemForDashboard {
+  id: string;
+  name: string;
+  stock: number;
+}

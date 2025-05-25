@@ -2,8 +2,8 @@
 'use server';
 
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, doc, getDoc, type Timestamp } from "firebase/firestore";
-import type { Sale, Product } from "@/lib/types";
+import { collection, getDocs, query, where, doc, getDoc, type Timestamp, limit, orderBy } from "firebase/firestore";
+import type { Sale, Product, RecentSaleForDashboard, LowStockItemForDashboard } from "@/lib/types";
 
 export async function getDashboardMetrics(): Promise<{
   success: boolean;
@@ -11,19 +11,21 @@ export async function getDashboardMetrics(): Promise<{
   otherIncomeTotal?: number;
   topSellingProduct?: { name: string; quantity: number } | null;
   activeProductsCount?: number;
+  recentSales?: RecentSaleForDashboard[];
+  lowStockItems?: LowStockItemForDashboard[];
   error?: string;
 }> {
   try {
-    const firestoreDb = db; // Use the imported db instance
+    const firestoreDb = db;
 
-    // Calculate Total Sales
+    // Calculate Total Sales & Prepare for Top Selling Product
     const salesCollectionRef = collection(firestoreDb, 'sales');
     const salesSnapshot = await getDocs(salesCollectionRef);
     let currentTotalSales = 0;
     const productSalesCount: { [productId: string]: number } = {};
 
     salesSnapshot.forEach(doc => {
-      const saleData = doc.data() as Omit<Sale, 'id' | 'saleDate'> & { saleDate: Timestamp }; // Assume saleDate is Timestamp from Firestore
+      const saleData = doc.data() as Omit<Sale, 'id' | 'saleDate'> & { saleDate: Timestamp };
       currentTotalSales += saleData.totalAmount || 0;
       saleData.items.forEach(item => {
         productSalesCount[item.productId] = (productSalesCount[item.productId] || 0) + item.quantity;
@@ -65,11 +67,45 @@ export async function getDashboardMetrics(): Promise<{
             quantity: maxQuantity,
           };
         } else {
-          // Product might have been deleted, handle as needed
           currentTopSellingProduct = { name: "Unknown Product", quantity: maxQuantity };
         }
       }
     }
+
+    // Fetch Recent Sales
+    const recentSalesQuery = query(
+      collection(firestoreDb, 'sales'),
+      orderBy('saleDate', 'desc'),
+      limit(5)
+    );
+    const recentSalesSnapshot = await getDocs(recentSalesQuery);
+    const currentRecentSales: RecentSaleForDashboard[] = recentSalesSnapshot.docs.map(docSnap => {
+      const data = docSnap.data() as Omit<Sale, 'id' | 'saleDate'> & { saleDate: Timestamp };
+      return {
+        id: docSnap.id,
+        saleDate: data.saleDate.toDate().toISOString(),
+        totalAmount: data.totalAmount,
+        itemCount: data.items.reduce((sum, item) => sum + item.quantity, 0),
+      };
+    });
+
+    // Fetch Low Stock Items
+    const lowStockQuery = query(
+      collection(firestoreDb, 'products'),
+      where('stock', '>', 0),
+      where('stock', '<', 10),
+      orderBy('stock', 'asc'),
+      limit(5)
+    );
+    const lowStockSnapshot = await getDocs(lowStockQuery);
+    const currentLowStockItems: LowStockItemForDashboard[] = lowStockSnapshot.docs.map(docSnap => {
+      const data = docSnap.data() as Product;
+      return {
+        id: docSnap.id,
+        name: data.name,
+        stock: data.stock,
+      };
+    });
 
     return {
       success: true,
@@ -77,6 +113,8 @@ export async function getDashboardMetrics(): Promise<{
       otherIncomeTotal: currentOtherIncomeTotal,
       activeProductsCount: currentActiveProductsCount,
       topSellingProduct: currentTopSellingProduct,
+      recentSales: currentRecentSales,
+      lowStockItems: currentLowStockItems,
     };
 
   } catch (error: any) {

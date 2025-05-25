@@ -2,13 +2,17 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { PageTitle } from "@/components/shared/page-title";
-import { DollarSign, TrendingUp, Coffee, BarChart3 } from "lucide-react";
-import type { MetricCardProps } from "@/lib/types";
+import { DollarSign, TrendingUp, Coffee, BarChart3, Archive, ShoppingBag, ExternalLink } from "lucide-react";
+import type { MetricCardProps, RecentSaleForDashboard, LowStockItemForDashboard } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { getDashboardMetrics } from "./dashboard/actions";
+import { format } from 'date-fns';
+import { Badge } from "@/components/ui/badge";
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const initialMetrics: MetricCardProps[] = [
   { title: "Total Sales", value: "$0", icon: DollarSign, description: "Sum of all completed sales" },
@@ -26,6 +30,8 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<MetricCardProps[]>(initialMetrics);
+  const [recentSales, setRecentSales] = useState<RecentSaleForDashboard[]>([]);
+  const [lowStockItems, setLowStockItems] = useState<LowStockItemForDashboard[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -60,14 +66,18 @@ export default function DashboardPage() {
             return metric;
           })
         );
+        setRecentSales(result.recentSales || []);
+        setLowStockItems(result.lowStockItems || []);
       } else if (result.error) {
         toast({
           title: "Error Fetching Dashboard Data",
           description: result.error,
           variant: "destructive",
         });
-         // If there's an error, keep initial placeholder values but stop overall loading
-        setMetrics(initialMetrics.map(im => ({...im}))); // Reset to initial values to clear skeletons if partially loaded
+        // Reset to initial/empty on error to clear potentially stale data
+        setMetrics(initialMetrics.map(im => ({...im}))); 
+        setRecentSales([]);
+        setLowStockItems([]);
       }
       setLoading(false);
     };
@@ -77,7 +87,7 @@ export default function DashboardPage() {
 
   const isLoadingMetric = (metricTitle: string, currentValue: string | number) => {
     if (!loading) return false; 
-
+    // Check if current value is still the placeholder for that metric
     const initialValueForMetric = initialMetrics.find(m => m.title === metricTitle)?.value;
     return currentValue === initialValueForMetric;
   };
@@ -124,38 +134,68 @@ export default function DashboardPage() {
       <div className="mt-8 grid gap-6 md:grid-cols-2">
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle>Recent Sales Activity</CardTitle>
+            <CardTitle className="flex items-center gap-2"><ShoppingBag className="h-5 w-5 text-primary" />Recent Sales</CardTitle>
+            <CardDescription>Last 5 sales transactions.</CardDescription>
           </CardHeader>
           <CardContent>
-            {loading && !metrics.find(m => m.title === "Total Sales")?.value.startsWith('$') ? ( 
-              <div className="space-y-4">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
+            {loading && recentSales.length === 0 ? ( 
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
               </div>
+            ) : recentSales.length > 0 ? (
+              <ul className="space-y-2">
+                {recentSales.map(sale => (
+                  <li key={sale.id} className="flex justify-between items-center text-sm p-2 rounded-md hover:bg-muted/50 transition-colors">
+                    <div>
+                      <p className="font-medium">{format(new Date(sale.saleDate), "MMM d, yyyy - p")}</p>
+                      <p className="text-xs text-muted-foreground">{sale.itemCount} item(s)</p>
+                    </div>
+                    <p className="font-semibold text-green-600">{currencyFormatter.format(sale.totalAmount)}</p>
+                  </li>
+                ))}
+              </ul>
             ) : (
-              <p className="text-muted-foreground">Sales chart or recent sales list will be displayed here.</p>
-              // Placeholder for future chart implementation
+              <p className="text-muted-foreground text-center py-4">No recent sales activity.</p>
             )}
           </CardContent>
         </Card>
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle>Inventory Status</CardTitle>
+            <CardTitle className="flex items-center gap-2"><Archive className="h-5 w-5 text-primary"/>Inventory Status</CardTitle>
+            <CardDescription>Products running low on stock (less than 10 units).</CardDescription>
           </CardHeader>
           <CardContent>
-             {loading && metrics.find(m => m.title === "Active Products")?.value === "0" ? (
-              <div className="space-y-4">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
+             {loading && lowStockItems.length === 0 ? (
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
               </div>
+            ) : lowStockItems.length > 0 ? (
+              <ul className="space-y-2">
+                {lowStockItems.map(item => (
+                  <li key={item.id} className="flex justify-between items-center text-sm p-2 rounded-md hover:bg-muted/50 transition-colors">
+                    <span className="font-medium">{item.name}</span>
+                    <Badge variant={item.stock < 5 ? "destructive" : "secondary"} className="text-xs">
+                      Stock: {item.stock}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
             ) : (
-              <p className="text-muted-foreground">Low stock items or inventory overview will be displayed here.</p>
-              // Placeholder for future chart implementation
+               <p className="text-muted-foreground text-center py-4">All products are well stocked or no products match low stock criteria.</p>
             )}
           </CardContent>
+            {lowStockItems.length > 0 && !loading && (
+             <CardFooter>
+                <Button variant="outline" size="sm" asChild className="w-full">
+                  <Link href="/inventory">
+                    Adjust Inventory <ExternalLink className="ml-2 h-3 w-3"/>
+                  </Link>
+                </Button>
+             </CardFooter>
+            )}
         </Card>
       </div>
     </div>
   );
 }
+
