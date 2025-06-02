@@ -22,8 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
     try {
-      // Ensure auth object is valid before subscribing
-      // The `auth` export from firebase.ts should now be reliably initialized or throw during its own initialization.
+      // The `auth` export from firebase.ts should now be reliably initialized.
       unsubscribe = onAuthStateChanged(auth, (currentUser) => {
         setUser(currentUser);
         setLoading(false);

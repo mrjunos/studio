@@ -11,6 +11,7 @@ import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc } from "
 import { revalidatePath } from 'next/cache';
 
 // TODO: Implement server-side authentication check for all write operations.
+// Example: Check request headers for an ID token and verify it with Firebase Admin SDK.
 
 const ProductSchema = z.object({
   id: z.string().optional(), 
@@ -38,8 +39,8 @@ export async function getProducts(): Promise<Product[]> {
     let errorMessage = "Error al obtener productos. Revisa los logs del servidor.";
     if (error.code === 'permission-denied') {
       errorMessage = "Permiso denegado en Firestore. Revisa tus reglas de seguridad en la consola de Firebase.";
-    } else if (error.message && (error.message.includes("Firebase app is not configured") || error.message.includes("Firebase projectId is not defined"))) {
-      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
+    } else if (error.message && (error.message.includes("Firebase app is not configured") || error.message.includes("Firebase projectId is not defined") || error.message.includes("Firebase app initialization failed"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente o falló al inicializar. Verifica las variables de entorno y los logs del servidor.";
     }
     throw new Error(errorMessage);
   }
@@ -72,8 +73,8 @@ export async function addProduct(data: ProductFormInput): Promise<{ success: boo
     let errorMessage = "Error al añadir producto.";
     if (e.code === 'permission-denied') {
       errorMessage = "Permiso denegado en Firestore. Revisa tus reglas de seguridad.";
-    } else if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined"))) {
-      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
+    } else if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined") || e.message.includes("Firebase app initialization failed"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente o falló al inicializar. Verifica las variables de entorno y los logs del servidor.";
     }
     return { success: false, error: errorMessage };
   }
@@ -116,8 +117,8 @@ export async function updateProduct(id: string, data: ProductFormInput): Promise
     let errorMessage = "Error al actualizar producto.";
     if (e.code === 'permission-denied') {
       errorMessage = "Permiso denegado en Firestore. Revisa tus reglas de seguridad.";
-    } else if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined"))) {
-      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
+    } else if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined") || e.message.includes("Firebase app initialization failed"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente o falló al inicializar. Verifica las variables de entorno y los logs del servidor.";
     }
     return { success: false, error: errorMessage };
   }
@@ -137,8 +138,8 @@ export async function deleteProduct(id: string): Promise<{ success: boolean; err
     let errorMessage = "Error al eliminar producto.";
     if (e.code === 'permission-denied') {
       errorMessage = "Permiso denegado en Firestore. Revisa tus reglas de seguridad.";
-    } else if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined"))) {
-      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
+    } else if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined") || e.message.includes("Firebase app initialization failed"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente o falló al inicializar. Verifica las variables de entorno y los logs del servidor.";
     }
     return { success: false, error: errorMessage };
   }
@@ -162,5 +163,4 @@ export async function handleSuggestCategory(productName: string): Promise<{ cate
     return { error: "Error al sugerir categoría. Por favor, selecciona manualmente." };
   }
 }
-
     

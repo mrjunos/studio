@@ -8,6 +8,7 @@ import { collection, getDocs, addDoc, doc, getDoc, Timestamp, increment, writeBa
 import { revalidatePath } from 'next/cache';
 
 // TODO: Implement server-side authentication check for all write operations.
+// Example: Check request headers for an ID token and verify it with Firebase Admin SDK.
 
 const InventoryAdjustmentSchema = z.object({
   productId: z.string().min(1, "El ID del producto es obligatorio"),
@@ -41,8 +42,8 @@ export async function getInventoryAdjustments(): Promise<InventoryAdjustment[]> 
   } catch (error: any) {
     console.error("Error al obtener ajustes de inventario:", error);
     let errorMessage = `Error al obtener ajustes de inventario. ${error.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}`;
-    if (error.message && (error.message.includes("Firebase app is not configured") || error.message.includes("Firebase projectId is not defined"))) {
-      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
+    if (error.message && (error.message.includes("Firebase app is not configured") || error.message.includes("Firebase projectId is not defined") || error.message.includes("Firebase app initialization failed"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente o falló al inicializar. Verifica las variables de entorno y los logs del servidor.";
     }
     throw new Error(errorMessage);
   }
@@ -101,11 +102,10 @@ export async function addInventoryAdjustment(data: InventoryAdjustmentFormInput,
   } catch (e: any) {
     console.error("Error al añadir ajuste de inventario: ", e);
     let errorMessage = `Error al añadir ajuste de inventario. ${e.code === 'permission-denied' ? 'Permiso denegado en Firestore.' : ''}`;
-    if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined"))) {
-      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
+    if (e.message && (e.message.includes("Firebase app is not configured") || e.message.includes("Firebase projectId is not defined") || e.message.includes("Firebase app initialization failed"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente o falló al inicializar. Verifica las variables de entorno y los logs del servidor.";
     }
     return { success: false, error: errorMessage };
   }
 }
-
     

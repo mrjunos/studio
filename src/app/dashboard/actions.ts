@@ -166,11 +166,10 @@ export async function getDashboardMetrics(): Promise<{
     let errorMessage = "Error al obtener métricas del dashboard. Por favor revisa los logs del servidor.";
     if (error.code === 'permission-denied') {
       errorMessage = "Permiso denegado en Firestore. Por favor revisa tus reglas de seguridad.";
-    } else if (error.message && (error.message.includes("Firebase app is not configured") || error.message.includes("Firebase projectId is not defined"))) {
-      errorMessage = "La aplicación Firebase no está configurada correctamente. Verifica las variables de entorno.";
+    } else if (error.message && (error.message.includes("Firebase app is not configured") || error.message.includes("Firebase projectId is not defined") || error.message.includes("Firebase app initialization failed"))) {
+      errorMessage = "La aplicación Firebase no está configurada correctamente o falló al inicializar. Verifica las variables de entorno y los logs del servidor.";
     }
     return { success: false, error: errorMessage };
   }
 }
-
     
