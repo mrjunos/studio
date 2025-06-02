@@ -450,7 +450,6 @@ export default function SalesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Fecha</TableHead>
-                    <TableHead>ID Venta</TableHead>
                     <TableHead className="text-center">Artículos</TableHead>
                     <TableHead className="text-right">Monto Total</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
@@ -460,7 +459,6 @@ export default function SalesPage() {
                   {salesHistory.map((sale) => (
                     <TableRow key={sale.id}>
                       <TableCell>{format(new Date(sale.saleDate), "PPp", { locale: es })}</TableCell>
-                      <TableCell className="text-xs truncate max-w-xs">{sale.id}</TableCell>
                       <TableCell className="text-center">
                         {sale.items.reduce((sum, item) => sum + item.quantity, 0)}
                       </TableCell>
