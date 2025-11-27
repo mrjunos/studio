@@ -144,36 +144,9 @@ export default function Inventory() {
                 <div className="grid-dashboard" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))' }}>
                     {filteredProducts.map(product => (
                         <Card key={product.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                            <div style={{
-                                height: '140px',
-                                background: 'hsl(var(--color-surface))',
-                                borderRadius: 'var(--radius-sm)',
-                                marginBottom: '1rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                overflow: 'hidden',
-                                position: 'relative'
-                            }}>
-                                {product.imageUrl ? (
-                                    <img src={product.imageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                ) : (
-                                    <Package size={48} style={{ opacity: 0.2 }} />
-                                )}
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '0.5rem',
-                                    right: '0.5rem',
-                                    background: 'rgba(0,0,0,0.6)',
-                                    padding: '0.25rem 0.5rem',
-                                    borderRadius: 'var(--radius-full)',
-                                    fontSize: '0.75rem',
-                                    backdropFilter: 'blur(4px)'
-                                }}>
-                                    {product.category}
-                                </div>
-                            </div>
-
+                            <span style={{ fontSize: '0.75rem', color: 'hsl(var(--color-primary))', fontWeight: '600', marginBottom: '0.25rem', display: 'block' }}>
+                                {product.category}
+                            </span>
                             <h3 style={{ fontSize: '1.1rem', marginBottom: '0.25rem' }}>{product.name}</h3>
                             <div className="flex-between" style={{ marginBottom: '1rem' }}>
                                 <span style={{ fontSize: '1.25rem', fontWeight: '700', color: 'hsl(var(--color-primary))' }}>

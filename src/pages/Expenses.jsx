@@ -8,6 +8,7 @@ import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { expenseCategories } from '../types';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 export default function Expenses() {
     const [expenses, setExpenses] = useState([]);
@@ -127,9 +128,31 @@ export default function Expenses() {
                                                 <Calendar size={14} style={{ opacity: 0.5 }} />
                                                 {(() => {
                                                     try {
-                                                        const date = expense.expenseDate ? new Date(expense.expenseDate) : new Date();
-                                                        return format(date, 'MMM d, yyyy');
+                                                        let dateValue = expense.expenseDate;
+
+                                                        if (!dateValue) return 'Fecha Inválida';
+
+                                                        // Handle Firestore Timestamp
+                                                        if (typeof dateValue.toDate === 'function') {
+                                                            dateValue = dateValue.toDate();
+                                                        }
+
+                                                        let date;
+                                                        // Handle YYYY-MM-DD string specifically to avoid timezone issues
+                                                        if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+                                                            const [year, month, day] = dateValue.split('-').map(Number);
+                                                            date = new Date(year, month - 1, day);
+                                                        } else {
+                                                            date = new Date(dateValue);
+                                                        }
+
+                                                        if (isNaN(date.getTime())) {
+                                                            return 'Fecha Inválida';
+                                                        }
+
+                                                        return format(date, 'MMM d, yyyy', { locale: es });
                                                     } catch (e) {
+                                                        console.error("Date parsing error", e);
                                                         return 'Fecha Inválida';
                                                     }
                                                 })()}

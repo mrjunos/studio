@@ -12,6 +12,7 @@ export default function POS() {
     const [searchTerm, setSearchTerm] = useState('');
     const [processing, setProcessing] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
+    const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
 
     useEffect(() => {
         fetchProducts();
@@ -82,7 +83,7 @@ export default function POS() {
             batch.set(saleRef, {
                 items: cart.map(({ maxStock, ...item }) => item), // Remove maxStock from data to save
                 totalAmount: cartTotal,
-                saleDate: new Date().toISOString(), // Using ISO string as per types
+                saleDate: new Date(saleDate).toISOString(), // Use selected date
                 createdAt: serverTimestamp()
             });
 
@@ -126,7 +127,6 @@ export default function POS() {
                 <div className="flex-between" style={{ marginBottom: '1.5rem' }}>
                     <div>
                         <h2 style={{ fontSize: '1.25rem' }}>Productos</h2>
-                        <p style={{ fontSize: '0.875rem', color: 'hsl(var(--color-text-muted))' }}>Selecciona productos para agregar al carrito.</p>
                     </div>
                     <div style={{ position: 'relative', width: '300px' }}>
                         <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'hsl(var(--color-text-muted))' }} />
@@ -231,6 +231,17 @@ export default function POS() {
                             <CheckCircle size={18} /> {successMsg}
                         </div>
                     )}
+
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'hsl(var(--color-text-muted))' }}>Fecha de Venta</label>
+                        <input
+                            type="date"
+                            className="input"
+                            value={saleDate}
+                            onChange={(e) => setSaleDate(e.target.value)}
+                            style={{ width: '100%' }}
+                        />
+                    </div>
 
                     <Button
                         style={{ width: '100%', padding: '1rem', fontSize: '1.1rem' }}
